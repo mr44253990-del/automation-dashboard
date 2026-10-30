@@ -3,1495 +3,1101 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Orbit · Browser Automation Studio</title>
+<title>Orbit Automation Engine</title>
 <style>
-/* ── Reset & Tokens ── */
+/* CSS Reset and Engineering Color Palette (Pure Code, No Emojis) */
 :root {
-  --bg: #070d1a;
-  --surface: #0d1a2e;
-  --surface2: #111f35;
-  --surface3: #162844;
-  --border: #1e3452;
-  --border2: #2a4870;
-  --text: #e8f2ff;
-  --muted: #7a9cc0;
-  --muted2: #4d6e95;
-  --blue: #5b9eff;
-  --blue2: #3a7fe0;
-  --violet: #9b8cff;
-  --green: #3ecf8e;
-  --green2: #2aaa74;
-  --amber: #fbbf24;
-  --red: #f87171;
-  --pink: #f472b6;
-  --cyan: #22d3ee;
-  --glow-blue: #5b9eff33;
-  --glow-green: #3ecf8e33;
-  --glow-red: #f8717133;
-  --radius: 14px;
-  --radius-sm: 9px;
-  --radius-xs: 6px;
-  --trans: .18s cubic-bezier(.4,0,.2,1);
-  --font: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --bg: #070d18;
+  --bg-subtle: #0b1526;
+  --surface: #0e1b30;
+  --surface-hover: #13243f;
+  --surface-active: #192e4e;
+  --border: #1a3254;
+  --border-focus: #3b82f6;
+  --text: #f0f6fc;
+  --text-muted: #8ba2c4;
+  --text-subtle: #557199;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-cyan: #0ea5e9;
+  --success: #10b981;
+  --success-bg: #064e3b33;
+  --warning: #f59e0b;
+  --warning-bg: #78350f33;
+  --danger: #ef4444;
+  --danger-bg: #7f1d1d33;
+  --mono: 'JetBrains Mono', 'Fira Code', 'Roboto Mono', monospace;
+  --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --radius: 8px;
+  --radius-sm: 4px;
+  --transition: 0.15s ease-in-out;
 }
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font);
+  font-family: var(--sans);
   min-height: 100vh;
-  background-image:
-    radial-gradient(ellipse 900px 500px at 80% -5%, #1a3566 0%, transparent 70%),
-    radial-gradient(ellipse 600px 400px at -5% 80%, #0f1e40 0%, transparent 60%);
+  display: flex;
 }
-button, input, select, textarea { font: inherit; }
-a { color: var(--blue); text-decoration: none; }
-a:hover { text-decoration: underline; }
-img { max-width: 100%; }
-::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
 
-/* ── Layout ── */
-.app { display: flex; min-height: 100vh; }
-
-/* ── Sidebar ── */
-.side {
-  width: 256px;
-  background: linear-gradient(180deg, #0a1629 0%, #08111f 100%);
+/* Sidebar Navigation */
+.sidebar {
+  width: 250px;
+  background: var(--bg-subtle);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  padding: 22px 14px 22px;
   position: sticky;
   top: 0;
   height: 100vh;
   flex-shrink: 0;
-  overflow-y: auto;
 }
-.brand {
+.sidebar-brand {
+  padding: 20px 16px;
+  border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 4px 10px 28px;
 }
-.orb-wrap {
-  position: relative;
-  width: 38px;
-  height: 38px;
-  flex-shrink: 0;
-}
-.orb {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #5b9eff, #9b8cff);
-  box-shadow: 0 0 20px var(--glow-blue);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-}
-.brand-text b { display: block; font-size: 15px; letter-spacing: -.02em; }
-.brand-text small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
-
-.nav-section { margin-bottom: 6px; }
-.nav-label {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: .12em;
-  color: var(--muted2);
+.brand-badge {
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 11px;
   font-weight: 700;
-  padding: 0 12px;
-  margin: 14px 0 6px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.05em;
 }
-.nav-btn {
+.brand-name {
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.nav-group {
+  padding: 16px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  overflow-y: auto;
+}
+.nav-heading {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 8px 10px 4px;
+}
+.nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid transparent;
+  justify-content: space-between;
+  padding: 8px 12px;
   border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
+  color: var(--text-muted);
+  text-decoration: none;
   font-size: 13px;
   font-weight: 500;
-  transition: var(--trans);
-  text-align: left;
+  cursor: pointer;
+  transition: var(--transition);
+  border: 1px solid transparent;
 }
-.nav-btn:hover { background: var(--surface2); color: var(--text); border-color: var(--border); }
-.nav-btn.active {
-  background: linear-gradient(135deg, #1a3358, #162844);
+.nav-item:hover {
+  background: var(--surface);
   color: var(--text);
-  border-color: var(--border2);
-  box-shadow: inset 0 1px 0 #ffffff0a;
 }
-.nav-ico { width: 22px; text-align: center; font-size: 15px; flex-shrink: 0; }
-.nav-badge {
-  margin-left: auto;
-  font-size: 10px;
-  background: var(--green);
-  color: #fff;
-  border-radius: 99px;
-  padding: 1px 6px;
-  font-weight: 700;
+.nav-item.active {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
 }
-.nav-badge.amber { background: var(--amber); color: #000; }
-.nav-badge.blue { background: var(--blue); }
-
-.side-footer {
-  margin-top: auto;
-  padding: 14px 12px 0;
+.nav-count {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--surface-active);
+  padding: 2px 6px;
+  border-radius: 10px;
+}
+.sidebar-footer {
+  padding: 16px;
   border-top: 1px solid var(--border);
   font-size: 11px;
-  color: var(--muted);
-  line-height: 1.7;
-}
-.status-dot {
-  display: inline-block;
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: var(--green);
-  box-shadow: 0 0 6px var(--green);
-  margin-right: 5px;
-  animation: pulse-dot 2s ease-in-out infinite;
-}
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50% { opacity: .5; }
+  color: var(--text-muted);
+  font-family: var(--mono);
 }
 
-/* ── Main ── */
-.main { flex: 1; padding: 32px clamp(16px, 4vw, 56px); max-width: 1500px; margin: 0 auto; width: 100%; overflow-x: hidden; }
+/* Main Content Area */
+.main {
+  flex: 1;
+  padding: 24px 32px;
+  overflow-y: auto;
+  max-width: 1400px;
+}
 
-/* ── Header ── */
-.page-header {
+/* Header */
+.top-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 20px;
-  margin-bottom: 32px;
-  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
 }
-.eyebrow {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: .16em;
-  color: var(--blue);
+.top-title {
+  font-size: 20px;
   font-weight: 700;
-  margin-bottom: 8px;
+  letter-spacing: -0.02em;
 }
-.page-title {
-  font-size: clamp(22px, 3vw, 34px);
-  font-weight: 800;
-  letter-spacing: -.04em;
-  background: linear-gradient(135deg, var(--text), var(--muted));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  line-height: 1.1;
+.top-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  font-family: var(--mono);
 }
-.page-sub { color: var(--muted); font-size: 13px; margin-top: 8px; }
-.header-pills { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.pill {
+.status-pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 13px;
-  border-radius: 99px;
-  background: var(--surface2);
+  gap: 8px;
+  font-size: 11px;
+  font-family: var(--mono);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
   border: 1px solid var(--border);
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 500;
 }
-.pill.active-pill { border-color: var(--green); color: var(--green); background: #0e2b1e; }
-.pill.ai-pill { border-color: var(--violet); color: var(--violet); background: #1a1633; }
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+}
+.status-indicator.off { background: var(--warning); }
 
-/* ── Sections ── */
-.section { display: none; animation: fadeIn .25s ease; }
-.section.active { display: block; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+/* Grid Layouts */
+.metrics-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.metric-box {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.metric-name {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+.metric-val {
+  font-size: 24px;
+  font-weight: 700;
+  font-family: var(--mono);
+  margin: 8px 0 4px;
+}
+.metric-desc {
+  font-size: 11px;
+  color: var(--text-subtle);
+}
 
-/* ── Metric Cards ── */
-.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
-.metric-card {
-  background: linear-gradient(145deg, var(--surface), #0c1828);
+/* Panels */
+.panel {
+  background: var(--bg-subtle);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 20px;
-  position: relative;
-  overflow: hidden;
-  transition: var(--trans);
+  margin-bottom: 20px;
 }
-.metric-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--accent-color, var(--blue)), transparent);
-  opacity: .6;
-}
-.metric-card:hover { border-color: var(--border2); transform: translateY(-2px); }
-.metric-icon { font-size: 22px; margin-bottom: 12px; }
-.metric-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
-.metric-value { font-size: 28px; font-weight: 800; letter-spacing: -.04em; line-height: 1; }
-.metric-hint { font-size: 11px; color: var(--muted); margin-top: 6px; }
-.metric-card.green { --accent-color: var(--green); }
-.metric-card.blue { --accent-color: var(--blue); }
-.metric-card.violet { --accent-color: var(--violet); }
-.metric-card.amber { --accent-color: var(--amber); }
-
-/* ── Grid layouts ── */
-.grid-2 { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, .85fr); gap: 18px; }
-.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-
-/* ── Panels ── */
-.panel {
-  background: linear-gradient(145deg, var(--surface), #0b1626);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 22px;
-}
-.panel + .panel { margin-top: 16px; }
-.panel-head {
+.panel-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
+  margin-bottom: 16px;
 }
-.panel-title { font-size: 16px; font-weight: 700; letter-spacing: -.02em; }
-.panel-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text);
+}
 
-/* ── Buttons ── */
+/* Two-column layout */
+.layout-2col {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 20px;
+}
+
+/* Buttons */
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 10px 16px;
-  border: none;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
   border-radius: var(--radius-sm);
-  font-weight: 700;
-  font-size: 13px;
+  border: 1px solid transparent;
   cursor: pointer;
-  transition: var(--trans);
-  white-space: nowrap;
+  transition: var(--transition);
+  text-decoration: none;
 }
-.btn-primary {
-  background: linear-gradient(135deg, var(--blue), var(--violet));
-  color: #fff;
-  box-shadow: 0 4px 16px var(--glow-blue);
-}
-.btn-primary:hover { filter: brightness(1.12); transform: translateY(-1px); }
-.btn-success {
-  background: linear-gradient(135deg, var(--green), #2aaa74);
-  color: #fff;
-  box-shadow: 0 4px 14px var(--glow-green);
-}
-.btn-success:hover { filter: brightness(1.1); }
-.btn-secondary {
-  background: var(--surface3);
-  color: var(--text);
-  border: 1px solid var(--border2);
-}
-.btn-secondary:hover { background: var(--surface2); border-color: var(--blue); }
-.btn-ghost {
-  background: transparent;
-  color: var(--muted);
-  border: 1px solid var(--border);
-}
-.btn-ghost:hover { color: var(--text); border-color: var(--border2); }
-.btn-danger {
-  background: #2d1122;
-  color: var(--red);
-  border: 1px solid #4d1f2e;
-}
-.btn-danger:hover { background: #3d1730; }
-.btn-sm { padding: 6px 11px; font-size: 12px; border-radius: var(--radius-xs); }
-.btn-xs { padding: 5px 9px; font-size: 11px; border-radius: 6px; }
-.btn:disabled { opacity: .5; cursor: not-allowed; transform: none !important; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-default { background: var(--surface); color: var(--text); border-color: var(--border); }
+.btn-default:hover { background: var(--surface-hover); }
+.btn-danger { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+.btn-danger:hover { background: var(--danger); color: #fff; }
+.btn-xs { padding: 4px 8px; font-size: 11px; }
 
-/* ── Task items ── */
-.task-list { display: grid; gap: 10px; }
-.task-item {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
+/* Table and List Styles */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.data-table th {
+  text-align: left;
+  padding: 10px 12px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.data-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
   border-radius: var(--radius-sm);
-  padding: 14px 16px;
-  transition: var(--trans);
-}
-.task-item:hover { border-color: var(--border2); background: var(--surface3); }
-.task-icon {
-  width: 40px; height: 40px;
-  border-radius: 11px;
-  background: var(--surface3);
-  border: 1px solid var(--border2);
-  display: grid;
-  place-items: center;
-  font-size: 18px;
-  flex-shrink: 0;
-  color: var(--blue);
-}
-.task-info { flex: 1; min-width: 0; }
-.task-name { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.task-meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
-.task-actions { display: flex; gap: 6px; flex-shrink: 0; }
-
-/* ── Badges ── */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 8px;
-  border-radius: 99px;
   font-size: 10px;
+  font-family: var(--mono);
   font-weight: 700;
-  letter-spacing: .04em;
 }
-.badge-green { background: #0f2e20; color: var(--green); border: 1px solid #1d4d33; }
-.badge-amber { background: #2a1e06; color: var(--amber); border: 1px solid #4a3a10; }
-.badge-red { background: #2d0f14; color: var(--red); border: 1px solid #4d1a20; }
-.badge-blue { background: #0d1e38; color: var(--blue); border: 1px solid #1a3a6a; }
-.badge-violet { background: #1a1533; color: var(--violet); border: 1px solid #2d2660; }
-.badge-muted { background: var(--surface3); color: var(--muted); border: 1px solid var(--border); }
+.tag-success { background: var(--success-bg); color: var(--success); }
+.tag-warning { background: var(--warning-bg); color: var(--warning); }
+.tag-danger { background: var(--danger-bg); color: var(--danger); }
+.tag-default { background: var(--surface); color: var(--text-muted); }
 
-/* ── Form ── */
-.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
-.field { display: flex; flex-direction: column; gap: 6px; }
-.field-full { grid-column: 1 / -1; }
-.field label { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
-.field input,
-.field select,
-.field textarea {
+/* Forms & Code Editor */
+.form-group {
+  margin-bottom: 14px;
+}
+.form-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.form-input, .form-select, .form-textarea {
+  width: 100%;
   background: var(--surface);
   border: 1px solid var(--border);
   color: var(--text);
+  padding: 8px 12px;
   border-radius: var(--radius-sm);
-  padding: 10px 12px;
   font-size: 13px;
   outline: none;
-  transition: var(--trans);
-  width: 100%;
+  transition: var(--transition);
 }
-.field input:focus,
-.field select:focus,
-.field textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 3px var(--glow-blue); }
-.field textarea { min-height: 96px; resize: vertical; }
-.field input[type="password"] { letter-spacing: .08em; }
-.field-hint { font-size: 10px; color: var(--muted2); margin-top: 2px; }
-
-.check-row { display: flex; align-items: center; gap: 9px; font-size: 13px; color: #c0d5ef; cursor: pointer; }
-.check-row input[type="checkbox"] { accent-color: var(--blue); width: 15px; height: 15px; cursor: pointer; }
-
-.section-title {
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color: var(--border-focus);
+}
+.code-box {
+  font-family: var(--mono);
   font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: .1em;
-  color: var(--muted);
-  font-weight: 700;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 10px;
-  margin: 22px 0 14px;
+  line-height: 1.6;
+  background: #040811;
+  color: #7dd3fc;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  min-height: 280px;
+  white-space: pre;
+  tab-size: 2;
 }
 
-/* ── Activity feed ── */
-.activity { display: grid; gap: 0; }
-.event {
+/* Chat Component */
+.chat-container {
   display: flex;
-  gap: 12px;
-  padding: 13px 0;
-  border-bottom: 1px solid var(--border);
+  flex-direction: column;
+  height: 480px;
 }
-.event:last-child { border-bottom: none; }
-.event-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  background: var(--green);
-  margin-top: 5px;
-  flex-shrink: 0;
-  box-shadow: 0 0 6px var(--green);
-}
-.event-dot.fail { background: var(--red); box-shadow: 0 0 6px var(--red); }
-.event-dot.warn { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
-.event-title { font-size: 13px; font-weight: 600; }
-.event-body { font-size: 11px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
-.event-screenshot {
-  margin-top: 8px;
-  border-radius: 8px;
-  border: 1px solid var(--border2);
-  max-height: 100px;
-  max-width: 180px;
-  display: block;
-}
-
-/* ── AI Chat ── */
-.chat-wrap { display: flex; flex-direction: column; height: 440px; }
-.chat-messages {
+.chat-log {
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 4px 0 12px;
+  gap: 12px;
+  padding-right: 8px;
 }
-.msg {
+.chat-bubble {
   max-width: 85%;
-  padding: 11px 14px;
-  border-radius: 14px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
-  line-height: 1.55;
-  white-space: pre-wrap;
+  line-height: 1.5;
 }
-.msg.ai {
-  background: var(--surface3);
-  border: 1px solid var(--border2);
-  color: var(--text);
-  align-self: flex-start;
-  border-radius: 4px 14px 14px 14px;
-}
-.msg.me {
-  background: linear-gradient(135deg, var(--blue2), var(--violet));
+.chat-bubble.user {
+  background: var(--accent);
   color: #fff;
   align-self: flex-end;
-  border-radius: 14px 14px 4px 14px;
 }
-.msg.loading { color: var(--muted); font-style: italic; }
-.chat-bar {
+.chat-bubble.bot {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  align-self: flex-start;
+}
+.chat-footer {
   display: flex;
   gap: 8px;
+  margin-top: 14px;
   padding-top: 12px;
   border-top: 1px solid var(--border);
+}
+
+/* Providers Grid */
+.provider-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  margin-bottom: 10px;
+}
+.provider-row.active {
+  border-color: var(--success);
+}
+.provider-chips {
+  display: flex;
   flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
 }
-.chat-selects { display: flex; gap: 8px; width: 100%; margin-bottom: 8px; flex-wrap: wrap; }
-.chat-bar input {
-  flex: 1;
-  min-width: 120px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: var(--radius-sm);
-  padding: 10px 14px;
-  font-size: 13px;
-  outline: none;
-}
-.chat-bar input:focus { border-color: var(--blue); }
-.chat-select {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: var(--radius-sm);
-  padding: 8px 12px;
-  font-size: 12px;
-  outline: none;
-  cursor: pointer;
-  flex: 1;
-  min-width: 100px;
-}
-.chat-select:focus { border-color: var(--blue); }
-
-/* ── Provider cards ── */
-.provider-grid { display: grid; gap: 12px; }
-.provider-card {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 16px 18px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  transition: var(--trans);
-}
-.provider-card:hover { border-color: var(--border2); }
-.provider-card.selected { border-color: var(--green); background: #0c2019; }
-.provider-icon {
-  width: 42px; height: 42px;
-  border-radius: 11px;
-  background: var(--surface3);
-  border: 1px solid var(--border2);
-  display: grid;
-  place-items: center;
-  font-size: 20px;
-  flex-shrink: 0;
-}
-.provider-info { flex: 1; min-width: 0; }
-.provider-name { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.provider-models { font-size: 11px; color: var(--muted); margin-top: 5px; }
-.model-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
-.model-chip {
+.chip {
   font-size: 11px;
-  background: var(--surface3);
+  font-family: var(--mono);
+  background: var(--bg-subtle);
   border: 1px solid var(--border);
-  color: var(--muted);
   padding: 3px 8px;
-  border-radius: 99px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: var(--trans);
+  color: var(--text-muted);
 }
-.model-chip:hover { border-color: var(--blue); color: var(--blue); }
-.model-chip.selected { background: var(--blue); color: #fff; border-color: var(--blue); }
-.provider-actions { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; align-items: flex-end; }
-
-/* ── Settings sections ── */
-.settings-section {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 18px 20px;
-  margin-bottom: 14px;
-}
-.settings-section-title {
-  font-size: 13px;
-  font-weight: 700;
-  margin-bottom: 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-/* ── Toast ── */
-.toast {
-  position: fixed;
-  right: 20px;
-  bottom: 24px;
-  max-width: 340px;
-  background: var(--surface2);
+.chip:hover, .chip.selected {
+  border-color: var(--accent);
   color: var(--text);
-  border: 1px solid var(--border2);
-  border-left: 3px solid var(--green);
-  padding: 12px 16px;
-  border-radius: var(--radius-sm);
+  background: var(--surface-active);
+}
+
+/* Toast */
+.toast-notice {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  padding: 12px 18px;
   font-size: 13px;
+  font-family: var(--mono);
+  border-radius: var(--radius-sm);
   display: none;
   z-index: 9999;
-  box-shadow: 0 8px 32px #00000066;
-  animation: slideUp .3s ease;
-}
-.toast.error { border-left-color: var(--red); }
-.toast.info { border-left-color: var(--blue); }
-@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: none; opacity: 1; } }
-
-/* ── Empty state ── */
-.empty-state {
-  text-align: center;
-  padding: 36px 20px;
-  color: var(--muted);
-  font-size: 13px;
-}
-.empty-icon { font-size: 36px; margin-bottom: 10px; opacity: .4; }
-
-/* ── Test result ── */
-.test-result {
-  margin-top: 10px;
-  padding: 10px 14px;
-  border-radius: var(--radius-xs);
-  font-size: 12px;
-  background: var(--surface3);
-  border: 1px solid var(--border);
-  color: var(--muted);
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-.test-result.ok { border-color: var(--green); color: var(--green); background: #0c2218; }
-.test-result.fail { border-color: var(--red); color: var(--red); background: #200d0f; }
-
-/* ── Quick action row ── */
-.quick-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
-
-/* ── Log viewer ── */
-.log-area {
-  background: #05080f;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  padding: 12px;
-  font-family: 'Courier New', monospace;
-  font-size: 11px;
-  color: #85c8ff;
-  min-height: 80px;
-  max-height: 200px;
-  overflow-y: auto;
-  line-height: 1.7;
-  white-space: pre-wrap;
-  word-break: break-all;
 }
 
-/* ── Screenshot viewer ── */
-.screenshot-viewer {
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  border: 1px solid var(--border2);
-  background: var(--surface);
-}
-.screenshot-viewer img { display: block; width: 100%; }
-
-/* ── Responsive ── */
-@media (max-width: 1100px) {
-  .metrics { grid-template-columns: repeat(2, 1fr); }
-  .grid-2 { grid-template-columns: 1fr; }
-  .grid-3 { grid-template-columns: 1fr 1fr; }
-}
-@media (max-width: 780px) {
-  .side { width: 64px; padding: 16px 8px; }
-  .brand-text, .nav-btn span:not(.nav-ico), .side-footer, .nav-label { display: none; }
-  .nav-btn { justify-content: center; padding: 12px; }
-  .main { padding: 20px 14px; }
-  .metrics { grid-template-columns: 1fr 1fr; }
-  .form-grid { grid-template-columns: 1fr; }
-  .grid-3 { grid-template-columns: 1fr; }
-  .chat-selects { flex-direction: column; }
-  .provider-card { flex-direction: column; align-items: flex-start; }
-}
-@media (max-width: 480px) {
-  .metrics { grid-template-columns: 1fr; }
-  .page-title { font-size: 22px; }
-}
-
-/* ── Spinner ── */
-@keyframes spin { to { transform: rotate(360deg); } }
-.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border2); border-top-color: var(--blue); border-radius: 50%; animation: spin .7s linear infinite; }
-
-/* ── Tab underline ── */
-.tab-nav { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; overflow-x: auto; }
-.tab-btn {
-  padding: 10px 18px;
-  background: none;
-  border: none;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  white-space: nowrap;
-  transition: var(--trans);
-}
-.tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); }
-.tab-btn:hover:not(.active) { color: var(--text); }
-.tab-panel { display: none; }
-.tab-panel.active { display: block; }
-
-/* ── Highlight ── */
-.highlight { color: var(--blue); font-weight: 700; }
-.highlight.green { color: var(--green); }
-.highlight.amber { color: var(--amber); }
-.highlight.red { color: var(--red); }
+/* Sections */
+.view-section { display: none; }
+.view-section.active { display: block; }
 </style>
 </head>
 <body>
-<div class="app">
 
-<!-- ════════════════════ SIDEBAR ════════════════════ -->
-<aside class="side">
-  <div class="brand">
-    <div class="orb-wrap">
-      <div class="orb">🌐</div>
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <span class="brand-badge">ORBIT</span>
+    <span class="brand-name">Automation</span>
+  </div>
+  <div class="nav-group">
+    <div class="nav-heading">System</div>
+    <div class="nav-item active" onclick="switchTab('overview')">
+      <span>Overview</span>
     </div>
-    <div class="brand-text">
-      <b>Orbit</b>
-      <small>automation studio</small>
+    <div class="nav-item" onclick="switchTab('tasks')">
+      <span>Task Manager</span>
+      <span class="nav-count" id="badgeTaskCount">0</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('history')">
+      <span>Execution Logs</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('screenshots')">
+      <span>Screenshots</span>
+    </div>
+
+    <div class="nav-heading">Engine & Intelligence</div>
+    <div class="nav-item" onclick="switchTab('assistant')">
+      <span>AI Operator</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('providers')">
+      <span>AI Providers</span>
+    </div>
+
+    <div class="nav-heading">Configuration</div>
+    <div class="nav-item" onclick="switchTab('enveditor')">
+      <span>Environment [.env]</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('backup')">
+      <span>Backup & Restore</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('telegram')">
+      <span>Telegram Console</span>
     </div>
   </div>
-
-  <div class="nav-section">
-    <div class="nav-label">Main</div>
-    <button class="nav-btn active" data-tab="overview">
-      <span class="nav-ico">◈</span><span>Overview</span>
-    </button>
-    <button class="nav-btn" data-tab="tasks">
-      <span class="nav-ico">⚡</span><span>Tasks</span>
-      <span class="nav-badge" id="sideTaskCount">0</span>
-    </button>
-    <button class="nav-btn" data-tab="history">
-      <span class="nav-ico">📋</span><span>History</span>
-    </button>
-    <button class="nav-btn" data-tab="screenshots">
-      <span class="nav-ico">📷</span><span>Screenshots</span>
-    </button>
-  </div>
-
-  <div class="nav-section">
-    <div class="nav-label">AI</div>
-    <button class="nav-btn" data-tab="assistant">
-      <span class="nav-ico">✦</span><span>AI Assistant</span>
-    </button>
-    <button class="nav-btn" data-tab="providers">
-      <span class="nav-ico">🔌</span><span>AI Providers</span>
-    </button>
-  </div>
-
-  <div class="nav-section">
-    <div class="nav-label">Config</div>
-    <button class="nav-btn" data-tab="settings">
-      <span class="nav-ico">⚙</span><span>Settings</span>
-    </button>
-    <button class="nav-btn" data-tab="notifications">
-      <span class="nav-ico">🔔</span><span>Notifications</span>
-    </button>
-  </div>
-
-  <div class="side-footer">
-    <span class="status-dot"></span> System online<br>
-    <span style="color:var(--muted2)">{{ timezone }}</span>
+  <div class="sidebar-footer">
+    TIMEZONE: {{ timezone }}<br>
+    ENGINE STATUS: OPERATIONAL
   </div>
 </aside>
 
-<!-- ════════════════════ MAIN ════════════════════ -->
+<!-- MAIN CONTENT -->
 <main class="main">
 
-<!-- ─── OVERVIEW ─── -->
-<section id="overview" class="section active">
-  <header class="page-header">
-    <div>
-      <div class="eyebrow">Browser automation · control center</div>
-      <h1 class="page-title" id="greetingText">Good day, operator.</h1>
-      <p class="page-sub">Monitor tasks, view results, and control automation from one place.</p>
-    </div>
-    <div class="header-pills">
-      <span class="pill" id="automationPill">
-        <span id="automationDot" class="status-dot" style="background:var(--amber);box-shadow:0 0 6px var(--amber)"></span>
-        <span id="automationText">{{ 'Automation ON' if enabled == 'true' else 'Automation OFF' }}</span>
-      </span>
-      <span class="pill ai-pill" id="activeAiPill">
-        ✦ <span id="activeAiLabel">No AI selected</span>
-      </span>
-    </div>
-  </header>
-
-  <!-- Metrics -->
-  <div class="metrics">
-    <div class="metric-card green">
-      <div class="metric-icon">⚡</div>
-      <div class="metric-label">Active tasks</div>
-      <div class="metric-value" id="metricActive">—</div>
-      <div class="metric-hint">running on schedule</div>
-    </div>
-    <div class="metric-card blue">
-      <div class="metric-icon">🎯</div>
-      <div class="metric-label">Last result</div>
-      <div class="metric-value" id="metricStatus" style="font-size:16px">{{ state.get('status','—')|upper }}</div>
-      <div class="metric-hint" id="metricTime">{{ state.get('finished_at','not run yet') }}</div>
-    </div>
-    <div class="metric-card violet">
-      <div class="metric-icon">🤖</div>
-      <div class="metric-label">Automation mode</div>
-      <div class="metric-value">{{ 'ON' if enabled == 'true' else 'OFF' }}</div>
-      <div class="metric-hint">global schedule switch</div>
-    </div>
-    <div class="metric-card amber">
-      <div class="metric-icon">🔔</div>
-      <div class="metric-label">Notifications</div>
-      <div class="metric-value" style="font-size:18px">{{ 'Telegram ✓' if tg else 'Ready' }}</div>
-      <div class="metric-hint">Telegram · Webhook · FCM</div>
-    </div>
-  </div>
-
-  <!-- Task board + activity -->
-  <div class="grid-2">
-    <div class="panel">
-      <div class="panel-head">
-        <div>
-          <div class="panel-title">Task board</div>
-          <div class="panel-sub">All scheduled browser tasks at a glance</div>
-        </div>
-        <button class="btn btn-primary btn-sm" onclick="openTab('tasks')">+ Add task</button>
-      </div>
-      <div id="overviewTaskList" class="task-list">
-        <div class="empty-state"><div class="empty-icon">📭</div>No tasks yet</div>
-      </div>
-    </div>
-    <div class="panel">
-      <div class="panel-head">
-        <div class="panel-title">Recent activity</div>
-        <button class="btn btn-ghost btn-sm" onclick="loadState()">↺ Refresh</button>
-      </div>
-      <div id="activityFeed" class="activity">
-        <div class="empty-state"><div class="empty-icon">📊</div>No history yet</div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ─── TASKS ─── -->
-<section id="tasks" class="section">
-  <header class="page-header">
-    <div>
-      <div class="eyebrow">Scheduler</div>
-      <h1 class="page-title">Tasks & schedules</h1>
-      <p class="page-sub">Create, edit, and run browser automation tasks.</p>
-    </div>
-    <button class="btn btn-primary" onclick="resetTaskForm()">+ New task</button>
-  </header>
-
-  <div class="grid-2">
-    <!-- Task list -->
-    <div class="panel">
-      <div class="panel-head">
-        <div class="panel-title">All tasks</div>
-        <button class="btn btn-ghost btn-sm" onclick="loadState()">↺ Refresh</button>
-      </div>
-      <div id="taskListFull" class="task-list">
-        <div class="empty-state"><div class="empty-icon">📭</div>No tasks</div>
-      </div>
-    </div>
-
-    <!-- Task form -->
-    <div class="panel">
-      <div class="panel-title" id="formTitle">New task</div>
-      <div style="height:12px"></div>
-      <form id="taskForm">
-        <input type="hidden" id="editId">
-        <div class="form-grid">
-          <div class="field">
-            <label>Task name</label>
-            <input id="taskName" required placeholder="e.g. Claim daily reward">
-          </div>
-          <div class="field">
-            <label>Task type</label>
-            <select id="taskKind">
-              <option value="daily_rewards">Daily Rewards</option>
-              <option value="available_balance">Check Balance</option>
-              <option value="custom">Custom steps</option>
-            </select>
-          </div>
-          <div class="field field-full">
-            <label>Target URL</label>
-            <input id="taskUrl" value="https://vyceai.com/dashboard-v2" placeholder="https://…">
-          </div>
-          <div class="field">
-            <label>Run time</label>
-            <input id="taskTime" value="20:17" type="time">
-          </div>
-          <div class="field">
-            <label>Timezone</label>
-            <input id="taskZone" value="Asia/Dhaka" placeholder="Asia/Dhaka">
-          </div>
-          <div class="field">
-            <label>Screenshot retention (hours)</label>
-            <input id="taskRetention" value="12" type="number" min="1">
-          </div>
-          <div class="field field-full">
-            <label>Custom steps JSON (for custom type)</label>
-            <textarea id="taskSteps" placeholder='[{"action":"click_text","text":"Daily Rewards"},{"action":"wait","ms":2000},{"action":"screenshot"}]'></textarea>
-          </div>
-        </div>
-        <div style="display:flex;gap:14px;margin:14px 0 0;flex-wrap:wrap">
-          <label class="check-row"><input id="taskEnabled" type="checkbox"> Enable schedule</label>
-          <label class="check-row"><input id="taskShot" type="checkbox" checked> Save screenshots</label>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
-          <button type="submit" class="btn btn-primary">💾 Save task</button>
-          <button type="button" class="btn btn-ghost" onclick="resetTaskForm()">Clear</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</section>
-
-<!-- ─── HISTORY ─── -->
-<section id="history" class="section">
-  <header class="page-header">
-    <div>
-      <div class="eyebrow">Logs</div>
-      <h1 class="page-title">Run history</h1>
-      <p class="page-sub">Full log of all task executions.</p>
-    </div>
-    <button class="btn btn-ghost btn-sm" onclick="loadState()">↺ Refresh</button>
-  </header>
-  <div class="panel">
-    <div id="historyFull" class="activity">
-      <div class="empty-state"><div class="empty-icon">📋</div>No history yet</div>
-    </div>
-  </div>
-</section>
-
-<!-- ─── SCREENSHOTS ─── -->
-<section id="screenshots" class="section">
-  <header class="page-header">
-    <div>
-      <div class="eyebrow">Visual record</div>
-      <h1 class="page-title">Screenshots</h1>
-      <p class="page-sub">Latest screenshot from each task run.</p>
-    </div>
-    <button class="btn btn-ghost btn-sm" onclick="loadScreenshot()">↺ Refresh</button>
-  </header>
-  <div class="panel">
-    <div id="screenshotPanel">
-      <div class="empty-state"><div class="empty-icon">📷</div>No screenshots yet. Run a task first.</div>
-    </div>
-  </div>
-</section>
-
-<!-- ─── AI ASSISTANT ─── -->
-<section id="assistant" class="section">
-  <header class="page-header">
-    <div>
-      <div class="eyebrow">AI operator</div>
-      <h1 class="page-title">AI Assistant</h1>
-      <p class="page-sub">Ask about tasks, get help writing automation steps, or analyze results.</p>
-    </div>
-    <span class="pill ai-pill" id="chatAiStatus">✦ <span id="chatAiLabel">Select provider</span></span>
-  </header>
-
-  <div class="grid-2">
-    <div class="panel" style="display:flex;flex-direction:column">
-      <div class="panel-head">
-        <div class="panel-title">Chat</div>
-        <button class="btn btn-ghost btn-sm" onclick="clearChat()">🗑 Clear</button>
-      </div>
-      <div class="chat-wrap" style="flex:1">
-        <div id="chatMessages" class="chat-messages">
-          <div class="msg ai">👋 Hi! I'm your browser automation assistant. I know how to:
-• Plan and write Playwright automation steps
-• Debug task errors and selectors
-• Configure schedules and notifications
-• Explain task results and logs
-
-Connect an AI provider in the <b>AI Providers</b> tab, then ask me anything!</div>
-        </div>
-        <div class="chat-bar">
-          <div class="chat-selects">
-            <select id="chatProvider" class="chat-select" onchange="onChatProviderChange()">
-              <option value="">Loading…</option>
-            </select>
-            <select id="chatModel" class="chat-select">
-              <option value="">default model</option>
-            </select>
-          </div>
-          <input id="chatInput" placeholder="Ask me to create a task, debug an error, explain results…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}">
-          <button class="btn btn-primary" onclick="sendChat()" id="sendBtn">Send</button>
-        </div>
-      </div>
-    </div>
-
-    <div>
-      <div class="panel" style="margin-bottom:14px">
-        <div class="panel-title" style="margin-bottom:12px">Quick prompts</div>
-        <div class="task-list">
-          <button class="btn btn-ghost" style="width:100%;justify-content:flex-start;font-weight:500;margin-bottom:6px" onclick="promptChat('Summarize the last task result and tell me if anything needs attention')">📋 Summarize last result</button>
-          <button class="btn btn-ghost" style="width:100%;justify-content:flex-start;font-weight:500;margin-bottom:6px" onclick="promptChat('Write custom Playwright steps JSON to click Daily Rewards and claim the reward button')">⚡ Write daily rewards steps</button>
-          <button class="btn btn-ghost" style="width:100%;justify-content:flex-start;font-weight:500;margin-bottom:6px" onclick="promptChat('Suggest the best schedule time for daily reward claiming to avoid downtime')">📅 Suggest schedule timing</button>
-          <button class="btn btn-ghost" style="width:100%;justify-content:flex-start;font-weight:500;margin-bottom:6px" onclick="promptChat('Explain how to set up Telegram notifications for task results')">🔔 Setup Telegram alerts</button>
-          <button class="btn btn-ghost" style="width:100%;justify-content:flex-start;font-weight:500" onclick="promptChat('What free AI providers can I use without paying? How do I get API keys?')">🆓 Best free AI providers</button>
-        </div>
-      </div>
-      <div class="panel">
-        <div class="panel-title" style="margin-bottom:10px">⚠ Safety notice</div>
-        <p style="font-size:12px;color:var(--muted);line-height:1.7">
-          AI can draft tasks and suggest steps — but tasks only run when <b>you click Run</b>. Credentials stay in <code>.env</code> server-side. CAPTCHA/MFA is never bypassed automatically.
-        </p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ─── AI PROVIDERS ─── -->
-<section id="providers" class="section">
-  <header class="page-header">
-    <div>
-      <div class="eyebrow">AI configuration</div>
-      <h1 class="page-title">AI Providers</h1>
-      <p class="page-sub">Connect free or paid AI providers. Test, select, and auto-save your preferred model.</p>
-    </div>
-    <button class="btn btn-ghost btn-sm" onclick="loadProviders()">↺ Refresh models</button>
-  </header>
-
-  <div class="panel" style="margin-bottom:16px">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+  <!-- OVERVIEW SECTION -->
+  <section id="overview" class="view-section active">
+    <div class="top-header">
       <div>
-        <div class="panel-title">Active model</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:4px">Currently selected for AI chat</div>
+        <h1 class="top-title">System Control Center</h1>
+        <div class="top-meta">MONITORING SCHEDULED BROWSER INSTANCES</div>
       </div>
-      <div id="activeModelDisplay" style="text-align:right">
-        <div style="font-size:13px;color:var(--muted)">No model selected</div>
-      </div>
-    </div>
-  </div>
-
-  <div id="providerGrid" class="provider-grid">
-    <div class="empty-state"><div class="spinner"></div><div style="margin-top:12px">Loading providers…</div></div>
-  </div>
-
-  <div id="testResult" class="test-result" style="display:none"></div>
-</section>
-
-<!-- ─── SETTINGS ─── -->
-<section id="settings" class="section">
-  <header class="page-header">
-    <div>
-      <div class="eyebrow">Configuration</div>
-      <h1 class="page-title">Settings</h1>
-      <p class="page-sub">API keys and secrets are stored server-side in <code>.env</code> and never exposed.</p>
-    </div>
-  </header>
-
-  <form id="settingsForm">
-    <!-- General -->
-    <div class="settings-section">
-      <div class="settings-section-title">⚙ General</div>
-      <div class="form-grid">
-        <div class="field">
-          <label>Timezone</label>
-          <input id="setZone" value="{{ timezone }}" placeholder="Asia/Dhaka">
-        </div>
-        <div class="field">
-          <label>Screenshot retention (hours)</label>
-          <input id="setRetention" value="12" type="number" min="1">
-        </div>
-        <div class="field">
-          <label>Login URL</label>
-          <input id="setLoginUrl" placeholder="https://example.com/login">
-          <span class="field-hint">Default: https://vyceai.com/login</span>
-        </div>
-        <div class="field">
-          <label>Target email</label>
-          <input id="setEmail" placeholder="your@email.com" type="email">
-        </div>
-        <div class="field">
-          <label>Target password</label>
-          <input id="setPassword" placeholder="••••••••" type="password">
-        </div>
-      </div>
-      <div style="margin-top:14px">
-        <label class="check-row"><input id="globalEnabled" type="checkbox" {{ 'checked' if enabled == 'true' else '' }}> Enable scheduled automation globally</label>
+      <div class="status-pill">
+        <span class="status-indicator {{ 'on' if enabled == 'true' else 'off' }}"></span>
+        AUTOMATION: {{ 'ACTIVE' if enabled == 'true' else 'STANDBY' }}
       </div>
     </div>
 
-    <!-- AI Providers in settings -->
-    <div class="settings-section">
-      <div class="settings-section-title">🤖 AI Provider Keys</div>
-      <div class="form-grid">
-        <div class="field">
-          <label>OpenRouter API key <span class="badge badge-green" style="font-size:9px;vertical-align:middle">FREE</span></label>
-          <input id="openrouterKey" type="password" placeholder="sk-or-…">
-          <span class="field-hint">Get free key at openrouter.ai — many free models</span>
-        </div>
-        <div class="field">
-          <label>Groq API key <span class="badge badge-green" style="font-size:9px;vertical-align:middle">FREE</span></label>
-          <input id="groqKey" type="password" placeholder="gsk_…">
-          <span class="field-hint">Free at console.groq.com — very fast inference</span>
-        </div>
-        <div class="field">
-          <label>Together AI key <span class="badge badge-green" style="font-size:9px;vertical-align:middle">FREE</span></label>
-          <input id="togetherKey" type="password" placeholder="…">
-          <span class="field-hint">Free tier at api.together.xyz</span>
-        </div>
-        <div class="field">
-          <label>Google Gemini key <span class="badge badge-green" style="font-size:9px;vertical-align:middle">FREE</span></label>
-          <input id="geminiKey" type="password" placeholder="AIza…">
-          <span class="field-hint">Free at aistudio.google.com</span>
-        </div>
-        <div class="field">
-          <label>OpenAI API key</label>
-          <input id="openaiKey" type="password" placeholder="sk-…">
-        </div>
-        <div class="field">
-          <label>OpenAI base URL</label>
-          <input id="openaiBase" value="https://api.openai.com/v1">
-        </div>
-        <div class="field">
-          <label>Anthropic API key</label>
-          <input id="anthropicKey" type="password" placeholder="sk-ant-…">
-        </div>
-        <div class="field">
-          <label>Custom AI base URL</label>
-          <input id="customBase" placeholder="https://provider.example/v1">
-        </div>
-        <div class="field">
-          <label>Custom AI key</label>
-          <input id="customKey" type="password" placeholder="…">
-        </div>
-        <div class="field">
-          <label>Custom AI model</label>
-          <input id="customModel" placeholder="model-name">
-        </div>
+    <div class="metrics-row">
+      <div class="metric-box">
+        <div class="metric-name">Enabled Tasks</div>
+        <div class="metric-val" id="metricActiveTasks">-</div>
+        <div class="metric-desc">Autonomous scheduled tasks</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-name">Last Run Status</div>
+        <div class="metric-val" id="metricLastStatus" style="font-size:16px">{{ state.get('status','N/A')|upper }}</div>
+        <div class="metric-desc" id="metricLastTime">{{ state.get('finished_at','No record') }}</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-name">Active AI Model</div>
+        <div class="metric-val" id="metricAiModel" style="font-size:13px">-</div>
+        <div class="metric-desc" id="metricAiProvider">Provider configured</div>
+      </div>
+      <div class="metric-box">
+        <div class="metric-name">Telegram Sync</div>
+        <div class="metric-val" style="font-size:15px">{{ 'CONNECTED' if tg else 'DISABLED' }}</div>
+        <div class="metric-desc">Dynamic menu console</div>
       </div>
     </div>
 
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      <button type="submit" class="btn btn-primary">💾 Save all settings</button>
-      <button type="button" class="btn btn-secondary" onclick="openTab('providers')">→ Configure AI providers</button>
-    </div>
-  </form>
-</section>
-
-<!-- ─── NOTIFICATIONS ─── -->
-<section id="notifications" class="section">
-  <header class="page-header">
-    <div>
-      <div class="eyebrow">Alerts</div>
-      <h1 class="page-title">Notifications</h1>
-      <p class="page-sub">Get notified on task success, failure, or custom events.</p>
-    </div>
-  </header>
-
-  <form id="notifForm">
-    <div class="settings-section">
-      <div class="settings-section-title">📱 Telegram</div>
-      <div class="form-grid">
-        <div class="field">
-          <label>Bot token</label>
-          <input id="tgToken" type="password" placeholder="123456:ABC-DEF…">
-          <span class="field-hint">From @BotFather on Telegram</span>
+    <div class="layout-2col">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Task Pipeline</span>
+          <button class="btn btn-primary btn-xs" onclick="switchTab('tasks')">+ New Task</button>
         </div>
-        <div class="field">
-          <label>Chat ID</label>
-          <input id="tgChat" placeholder="-100123456789">
-          <span class="field-hint">Use @userinfobot to find your ID</span>
+        <div id="overviewTaskList">Loading task pipeline...</div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Recent Execution Feed</span>
+          <button class="btn btn-default btn-xs" onclick="fetchState()">Refresh</button>
         </div>
+        <div id="overviewHistoryList">Loading execution logs...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TASK MANAGER SECTION -->
+  <section id="tasks" class="view-section">
+    <div class="top-header">
+      <div>
+        <h1 class="top-title">Task Scheduler</h1>
+        <div class="top-meta">AUTOMATION DISPATCH AND PLAYWRIGHT ACTIONS</div>
+      </div>
+      <button class="btn btn-default btn-xs" onclick="clearTaskForm()">Reset Form</button>
+    </div>
+
+    <div class="layout-2col">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Registered Tasks</span>
+          <button class="btn btn-default btn-xs" onclick="fetchState()">Refresh</button>
+        </div>
+        <div id="taskListFull">Loading...</div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title" id="taskFormHeading">Task Configuration</span>
+        </div>
+        <form id="taskForm">
+          <input type="hidden" id="taskEditId">
+          <div class="form-group">
+            <label class="form-label">Task Identifier / Name</label>
+            <input class="form-input" id="taskName" required placeholder="Claim Daily Bonus">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Execution Routine Kind</label>
+            <select class="form-select" id="taskKind">
+              <option value="daily_rewards">Claim Daily Rewards</option>
+              <option value="available_balance">Verify Available Balance</option>
+              <option value="custom">Custom Playwright Workflow</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Target URL</label>
+            <input class="form-input" id="taskUrl" value="https://vyceai.com/dashboard-v2">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group">
+              <label class="form-label">Schedule Time [24H]</label>
+              <input class="form-input" id="taskTime" type="time" value="20:17">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Timezone</label>
+              <input class="form-input" id="taskZone" value="Asia/Dhaka">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Custom Action Steps [JSON Format]</label>
+            <textarea class="form-textarea code-box" id="taskSteps" style="min-height:120px" placeholder='[{"action":"click_text","text":"Daily Rewards"},{"action":"wait","ms":2000}]'></textarea>
+          </div>
+          <div style="display:flex;gap:16px;margin:12px 0">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+              <input type="checkbox" id="taskEnabled"> Enable Schedule
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer">
+              <input type="checkbox" id="taskScreenshot" checked> Capture Screenshot
+            </label>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:16px">
+            <button type="submit" class="btn btn-primary">Save Task</button>
+            <button type="button" class="btn btn-default" onclick="clearTaskForm()">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ENVIRONMENT SETTINGS SECTION (.env FULL EDITOR) -->
+  <section id="enveditor" class="view-section">
+    <div class="top-header">
+      <div>
+        <h1 class="top-title">Environment Variables [.env]</h1>
+        <div class="top-meta">ALL SYSTEM CREDENTIALS AND CONFIGURATION STRINGS</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-default btn-xs" onclick="reloadEnv()">Reload Disk State</button>
+        <button class="btn btn-primary btn-xs" onclick="saveRawEnv()">Save .env File</button>
       </div>
     </div>
 
-    <div class="settings-section">
-      <div class="settings-section-title">🌐 Webhook</div>
-      <div class="field" style="max-width:480px">
-        <label>Webhook URL</label>
-        <input id="webhook" placeholder="https://your-server.com/webhook">
-        <span class="field-hint">POST with {text, content} payload</span>
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Raw .env Configuration Editor</span>
+        <span style="font-size:11px;color:var(--text-muted);font-family:var(--mono)">CHMOD 600 SECURED</span>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">
+        Edit any variable directly. Changes are written directly to <code>.env</code> on disk and instantly applied to the running server.
+      </p>
+      <textarea id="rawEnvEditor" class="form-textarea code-box" style="min-height:360px"></textarea>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
+        <button class="btn btn-primary" onclick="saveRawEnv()">Save Environment Configuration</button>
+        <span id="envSaveStatus" style="font-size:12px;font-family:var(--mono);color:var(--text-muted)"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- BACKUP & RESTORE SECTION -->
+  <section id="backup" class="view-section">
+    <div class="top-header">
+      <div>
+        <h1 class="top-title">Full Application Backup & Restore</h1>
+        <div class="top-meta">PERSIST ALL SCHEDULES, LOGS, AND SYSTEM CONFIGURATION</div>
       </div>
     </div>
 
-    <div class="settings-section">
-      <div class="settings-section-title">🔥 Firebase FCM</div>
-      <div class="form-grid">
-        <div class="field">
-          <label>FCM device token</label>
-          <input id="fcmToken" type="password" placeholder="long device token…">
+    <div class="layout-2col">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Generate Application Archive</span>
         </div>
-        <div class="field">
-          <label>Google service account JSON</label>
-          <textarea id="googleJson" placeholder="Paste full service account JSON…" style="min-height:70px"></textarea>
+        <p style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:16px">
+          Exports a complete ZIP package containing your <code>.env</code> configuration, all registered task routines (<code>tasks.json</code>), and historical run states.
+        </p>
+        <a href="/api/backup/download" class="btn btn-primary">Download Backup Archive</a>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Restore Application State</span>
+        </div>
+        <p style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:16px">
+          Select an Orbit backup ZIP archive to restore all configurations and task routines automatically.
+        </p>
+        <form id="restoreForm" enctype="multipart/form-data">
+          <input type="file" id="backupFileInput" accept=".zip" class="form-input" style="margin-bottom:14px">
+          <button type="submit" class="btn btn-default">Execute Restore</button>
+        </form>
+        <div id="restoreStatus" style="font-size:12px;font-family:var(--mono);margin-top:10px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TELEGRAM CONSOLE SECTION -->
+  <section id="telegram" class="view-section">
+    <div class="top-header">
+      <div>
+        <h1 class="top-title">Telegram Bot Integration</h1>
+        <div class="top-meta">REMOTE CONTROLLER WITH DYNAMIC INLINE BUTTONS & SCREENSHOTS</div>
+      </div>
+      <button class="btn btn-default btn-xs" onclick="sendTestNotification()">Dispatch Test Card</button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Telegram Bot Capabilities</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:13px;color:var(--text-muted);line-height:1.6">
+        <div>
+          <h4 style="color:var(--text);margin-bottom:6px">Interactive Menu Controls</h4>
+          <p>
+            Start a chat with your Telegram Bot and type <code>/menu</code> or <code>/start</code>. You will receive an interactive inline console allowing you to:
+          </p>
+          <ul style="margin:8px 0 0 18px">
+            <li>Toggle global automation switch (ON/OFF)</li>
+            <li>List and trigger any task routine on-demand</li>
+            <li>Enable or disable individual schedules</li>
+            <li>Request latest screenshots and execution logs</li>
+            <li>Generate and receive full backup ZIP files directly</li>
+          </ul>
+        </div>
+        <div>
+          <h4 style="color:var(--text);margin-bottom:6px">Execution Card Delivery</h4>
+          <p>
+            When any browser task finishes, a structured status card with timestamp, execution status, and the full browser screenshot is sent directly to your Telegram chat.
+          </p>
+          <div style="margin-top:14px">
+            <button class="btn btn-primary btn-xs" onclick="sendTestNotification()">Test Telegram Connection</button>
+          </div>
         </div>
       </div>
     </div>
+  </section>
 
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <button type="submit" class="btn btn-primary">💾 Save notifications</button>
-      <button type="button" class="btn btn-secondary" onclick="testNotifications()">🔔 Send test</button>
-      <div id="notifyResult" style="font-size:12px;color:var(--muted)"></div>
+  <!-- AI OPERATOR SECTION -->
+  <section id="assistant" class="view-section">
+    <div class="top-header">
+      <div>
+        <h1 class="top-title">AI Automation Engineer</h1>
+        <div class="top-meta">INSTRUCTION, WORKFLOW DESIGN & TROUBLESHOOTING</div>
+      </div>
+      <div class="status-pill" id="chatEngineLabel">ENGINE: READY</div>
     </div>
-  </form>
-</section>
 
-</main><!-- /main -->
-</div><!-- /app -->
+    <div class="layout-2col">
+      <div class="panel chat-container">
+        <div class="panel-header">
+          <span class="panel-title">Operator Console</span>
+          <button class="btn btn-default btn-xs" onclick="clearChat()">Clear</button>
+        </div>
+        <div class="chat-log" id="chatLog">
+          <div class="chat-bubble bot">
+            Orbit AI Engineer active. Inquire regarding selector construction, schedule optimization, or troubleshooting failed tasks.
+          </div>
+        </div>
+        <div class="chat-footer">
+          <input class="form-input" id="chatInput" placeholder="Request workflow analysis or selector repair..." onkeydown="if(event.key==='Enter')dispatchChat()">
+          <button class="btn btn-primary" onclick="dispatchChat()">Send</button>
+        </div>
+      </div>
 
-<div id="toast" class="toast"></div>
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Quick Routines</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-default btn-xs" style="text-align:left;justify-content:flex-start" onclick="promptPrompt('Analyze the last executed task result and diagnose issues if any.')">
+            Analyze last task execution
+          </button>
+          <button class="btn btn-default btn-xs" style="text-align:left;justify-content:flex-start" onclick="promptPrompt('Generate JSON steps for logging into a standard portal and clicking a balance button.')">
+            Draft Playwright action steps
+          </button>
+          <button class="btn btn-default btn-xs" style="text-align:left;justify-content:flex-start" onclick="promptPrompt('Provide recommendations for reliable schedule timing in Asia/Dhaka timezone.')">
+            Review schedule timing
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- AI PROVIDERS SECTION -->
+  <section id="providers" class="view-section">
+    <div class="top-header">
+      <div>
+        <h1 class="top-title">AI Providers & Model Selection</h1>
+        <div class="top-meta">CONNECT HIGH-SPEED FREE AND DEDICATED INFERENCE ENGINES</div>
+      </div>
+      <button class="btn btn-default btn-xs" onclick="loadProviders()">Refresh Models</button>
+    </div>
+
+    <div id="providersList">Loading provider configurations...</div>
+    <div id="testOutput" style="margin-top:16px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);display:none;font-family:var(--mono);font-size:12px"></div>
+  </section>
+
+  <!-- EXECUTION LOGS SECTION -->
+  <section id="history" class="view-section">
+    <div class="top-header">
+      <div>
+        <h1 class="top-title">Execution Log Archive</h1>
+        <div class="top-meta">COMPLETE AUDIT TRAIL OF TASK RUNS</div>
+      </div>
+      <button class="btn btn-default btn-xs" onclick="fetchState()">Refresh</button>
+    </div>
+    <div class="panel">
+      <div id="historyFull">Loading log records...</div>
+    </div>
+  </section>
+
+  <!-- SCREENSHOTS SECTION -->
+  <section id="screenshots" class="view-section">
+    <div class="top-header">
+      <div>
+        <h1 class="top-title">Screenshot Inspection</h1>
+        <div class="top-meta">LATEST CAPTURED BROWSER STATES</div>
+      </div>
+      <button class="btn btn-default btn-xs" onclick="loadScreenshot()">Reload Image</button>
+    </div>
+    <div class="panel" id="screenshotContainer">
+      <div style="font-size:12px;color:var(--text-muted);font-family:var(--mono)">Loading screenshot...</div>
+    </div>
+  </section>
+
+</main>
+
+<div id="toast" class="toast-notice"></div>
 
 <script>
-// ══════════════════════════════════════════════════
-// State
-// ══════════════════════════════════════════════════
+// Core Application State
 let appState = { tasks: [], history: [], state: {} };
-let providersData = [];
+let providers = [];
 let activeProvider = '';
 let activeModel = '';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-// ── Toast ──
-function toast(msg, type = 'ok') {
+function toast(msg) {
   const el = $('toast');
   el.textContent = msg;
-  el.className = 'toast' + (type === 'error' ? ' error' : type === 'info' ? ' info' : '');
   el.style.display = 'block';
   clearTimeout(el._t);
-  el._t = setTimeout(() => el.style.display = 'none', 3500);
+  el._t = setTimeout(() => el.style.display = 'none', 3000);
 }
 
-// ── Tab navigation ──
-function openTab(id) {
-  document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === id));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === id));
+function switchTab(id) {
+  document.querySelectorAll('.view-section').forEach(s => s.classList.toggle('active', s.id === id));
+  document.querySelectorAll('.nav-item').forEach(b => {
+    b.classList.toggle('active', b.getAttribute('onclick')?.includes(id));
+  });
+  if (id === 'enveditor') reloadEnv();
   if (id === 'providers') loadProviders();
   if (id === 'screenshots') loadScreenshot();
-  if (id === 'assistant') loadProvidersForChat();
 }
-document.querySelectorAll('.nav-btn').forEach(b => b.onclick = () => openTab(b.dataset.tab));
 
-// ── Greeting ──
-function setGreeting() {
-  const h = new Date().getHours();
-  const g = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-  $('greetingText').textContent = g + ', operator.';
-}
-setGreeting();
-
-// ══════════════════════════════════════════════════
-// State loading
-// ══════════════════════════════════════════════════
-async function loadState() {
+async function fetchState() {
   try {
     const r = await fetch('/api/state');
-    const d = await r.json();
-    appState = d;
+    appState = await r.json();
     renderAll();
-  } catch(e) { toast('Failed to load state', 'error'); }
+  } catch(e) {
+    toast('Error loading system state');
+  }
 }
 
 function renderAll() {
-  renderMetrics();
-  renderOverviewTasks();
-  renderActivity();
-  renderTaskList();
-  renderHistory();
-  updateSideBadge();
-  loadActiveAI();
-}
-
-function renderMetrics() {
   const tasks = appState.tasks || [];
-  const active = tasks.filter(t => t.enabled).length;
-  $('metricActive').textContent = active;
-  $('sideTaskCount').textContent = active;
+  const activeCount = tasks.filter(t => t.enabled).length;
+  $('metricActiveTasks').textContent = activeCount;
+  $('badgeTaskCount').textContent = activeCount;
 
   const st = appState.state || {};
-  const status = (st.status || '—').toUpperCase();
-  $('metricStatus').textContent = status;
-  $('metricTime').textContent = st.finished_at ? new Date(st.finished_at).toLocaleString() : 'not run yet';
+  $('metricLastStatus').textContent = (st.status || 'N/A').toUpperCase();
+  $('metricLastTime').textContent = st.finished_at ? new Date(st.finished_at).toLocaleString() : 'No record';
 
-  // color the status
-  const colors = { SUCCESS: 'var(--green)', ALREADY_DONE: 'var(--green)', FAILED: 'var(--red)', NOT_RUN: 'var(--muted)' };
-  $('metricStatus').style.color = colors[status] || 'var(--blue)';
-}
-
-function updateSideBadge() {
-  const active = (appState.tasks || []).filter(t => t.enabled).length;
-  $('sideTaskCount').textContent = active;
-  $('sideTaskCount').className = 'nav-badge' + (active > 0 ? '' : ' amber');
-}
-
-function taskKindLabel(kind) {
-  return kind === 'daily_rewards' ? 'Daily Rewards' : kind === 'available_balance' ? 'Balance Check' : kind === 'custom' ? 'Custom steps' : kind;
-}
-function taskKindIcon(kind) {
-  return kind === 'daily_rewards' ? '🎁' : kind === 'available_balance' ? '💰' : '⚙';
-}
-
-function taskCardHtml(t, withActions = true) {
-  return `
-  <div class="task-item">
-    <div class="task-icon">${taskKindIcon(t.kind)}</div>
-    <div class="task-info">
-      <div class="task-name">${esc(t.name)} <span class="badge ${t.enabled ? 'badge-green' : 'badge-muted'}">${t.enabled ? 'ACTIVE' : 'OFF'}</span></div>
-      <div class="task-meta">${esc(t.time)} · ${esc(t.timezone)} · ${taskKindLabel(t.kind)}</div>
-    </div>
-    ${withActions ? `
-    <div class="task-actions">
-      <button class="btn btn-success btn-xs" onclick="runTask('${t.id}')">▶ Run</button>
-      <button class="btn btn-secondary btn-xs" onclick="editTask('${t.id}')">Edit</button>
-      <button class="btn btn-danger btn-xs" onclick="deleteTask('${t.id}')">✕</button>
-    </div>` : ''}
-  </div>`;
+  renderOverviewTasks();
+  renderOverviewHistory();
+  renderTasksFull();
+  renderHistoryFull();
 }
 
 function renderOverviewTasks() {
   const tasks = appState.tasks || [];
-  $('overviewTaskList').innerHTML = tasks.length
-    ? tasks.slice(0, 5).map(t => taskCardHtml(t, false)).join('')
-    : '<div class="empty-state"><div class="empty-icon">📭</div>No tasks yet. <button class="btn btn-ghost btn-xs" onclick="openTab(\'tasks\')" style="margin-top:8px">Create task</button></div>';
+  if (!tasks.length) {
+    $('overviewTaskList').innerHTML = '<div style="font-size:12px;color:var(--text-muted)">No registered tasks.</div>';
+    return;
+  }
+  let html = '<table class="data-table"><thead><tr><th>Task</th><th>Schedule</th><th>Status</th><th>Action</th></tr></thead><tbody>';
+  tasks.slice(0, 5).forEach(t => {
+    const tag = t.enabled ? '<span class="tag tag-success">ACTIVE</span>' : '<span class="tag tag-default">DISABLED</span>';
+    html += `<tr>
+      <td><b>${esc(t.name)}</b></td>
+      <td><span style="font-family:var(--mono)">${esc(t.time)}</span></td>
+      <td>${tag}</td>
+      <td><button class="btn btn-default btn-xs" onclick="runTask('${t.id}')">Run</button></td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  $('overviewTaskList').innerHTML = html;
 }
 
-function renderTaskList() {
+function renderOverviewHistory() {
+  const hist = (appState.history || []).slice(0, 5);
+  if (!hist.length) {
+    $('overviewHistoryList').innerHTML = '<div style="font-size:12px;color:var(--text-muted)">No execution logs available.</div>';
+    return;
+  }
+  let html = '<div style="display:flex;flex-direction:column;gap:10px">';
+  hist.forEach(h => {
+    const isSuccess = ['success', 'already_done'].includes(h.status);
+    const tag = isSuccess ? '<span class="tag tag-success">PASS</span>' : '<span class="tag tag-danger">FAIL</span>';
+    html += `<div style="border-bottom:1px solid var(--border);padding-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-size:12px">
+        <b>${esc(h.task_name || h.task_id)}</b>
+        ${tag}
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${esc(h.message || h.error || 'Finished')}</div>
+    </div>`;
+  });
+  html += '</div>';
+  $('overviewHistoryList').innerHTML = html;
+}
+
+function renderTasksFull() {
   const tasks = appState.tasks || [];
-  $('taskListFull').innerHTML = tasks.length
-    ? tasks.map(t => taskCardHtml(t, true)).join('')
-    : '<div class="empty-state"><div class="empty-icon">📭</div>No tasks yet</div>';
+  if (!tasks.length) {
+    $('taskListFull').innerHTML = '<div style="font-size:12px;color:var(--text-muted)">No tasks defined.</div>';
+    return;
+  }
+  let html = '<table class="data-table"><thead><tr><th>Name</th><th>Time</th><th>Status</th><th>Manage</th></tr></thead><tbody>';
+  tasks.forEach(t => {
+    const tag = t.enabled ? '<span class="tag tag-success">ACTIVE</span>' : '<span class="tag tag-default">OFF</span>';
+    html += `<tr>
+      <td><b>${esc(t.name)}</b><br><span style="font-size:11px;color:var(--text-subtle)">${esc(t.kind)}</span></td>
+      <td><span style="font-family:var(--mono)">${esc(t.time)}</span></td>
+      <td>${tag}</td>
+      <td>
+        <button class="btn btn-default btn-xs" onclick="runTask('${t.id}')">Run</button>
+        <button class="btn btn-default btn-xs" onclick="editTask('${t.id}')">Edit</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteTask('${t.id}')">Del</button>
+      </td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  $('taskListFull').innerHTML = html;
 }
 
-function eventClass(status) {
-  if (!status) return '';
-  if (['failed','error'].includes(status)) return 'fail';
-  if (status === 'already_done') return 'warn';
-  return '';
-}
-
-function renderActivity() {
-  const hist = (appState.history || []).slice(0, 8);
-  $('activityFeed').innerHTML = hist.length
-    ? hist.map(x => `
-      <div class="event">
-        <div class="event-dot ${eventClass(x.status)}"></div>
-        <div>
-          <div class="event-title">${esc(x.task_name || x.task_id)} · <span class="highlight ${x.status === 'failed' ? 'red' : x.status === 'already_done' ? 'amber' : 'green'}">${esc(x.status)}</span></div>
-          <div class="event-body">${esc(x.message || x.error || 'Completed')}<br>${x.finished_at ? new Date(x.finished_at).toLocaleString() : ''}</div>
-          ${x.screenshot ? `<img class="event-screenshot" src="/screenshot" alt="screenshot" onerror="this.style.display='none'">` : ''}
-        </div>
-      </div>`).join('')
-    : '<div class="empty-state"><div class="empty-icon">📊</div>No activity yet</div>';
-}
-
-function renderHistory() {
+function renderHistoryFull() {
   const hist = appState.history || [];
-  $('historyFull').innerHTML = hist.length
-    ? hist.map(x => `
-      <div class="event">
-        <div class="event-dot ${eventClass(x.status)}"></div>
-        <div style="flex:1">
-          <div class="event-title">${esc(x.task_name || x.task_id)} · <span class="highlight ${x.status === 'failed' ? 'red' : x.status === 'already_done' ? 'amber' : 'green'}">${esc(x.status)}</span></div>
-          <div class="event-body">
-            ${esc(x.message || x.error || '')}
-            ${x.started_at ? '<br>Started: ' + new Date(x.started_at).toLocaleString() : ''}
-            ${x.finished_at ? ' · Finished: ' + new Date(x.finished_at).toLocaleString() : ''}
-          </div>
-          ${x.trace ? `<div class="log-area" style="margin-top:8px">${esc(x.trace)}</div>` : ''}
-        </div>
-      </div>`).join('')
-    : '<div class="empty-state"><div class="empty-icon">📋</div>No history yet</div>';
+  if (!hist.length) {
+    $('historyFull').innerHTML = '<div style="font-size:12px;color:var(--text-muted)">No history records.</div>';
+    return;
+  }
+  let html = '<table class="data-table"><thead><tr><th>Task</th><th>Status</th><th>Timestamp</th><th>Message / Diagnostics</th></tr></thead><tbody>';
+  hist.forEach(h => {
+    const isSuccess = ['success', 'already_done'].includes(h.status);
+    const tag = isSuccess ? '<span class="tag tag-success">SUCCESS</span>' : '<span class="tag tag-danger">FAILED</span>';
+    html += `<tr>
+      <td><b>${esc(h.task_name || h.task_id)}</b></td>
+      <td>${tag}</td>
+      <td><span style="font-family:var(--mono);font-size:11px">${esc(h.finished_at || h.started_at || '')}</span></td>
+      <td>
+        <div style="font-size:12px">${esc(h.message || h.error || '')}</div>
+        ${h.trace ? `<div class="code-box" style="margin-top:6px;max-height:100px;overflow-y:auto;min-height:auto">${esc(h.trace)}</div>` : ''}
+      </td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  $('historyFull').innerHTML = html;
 }
 
-// ══════════════════════════════════════════════════
-// Tasks CRUD
-// ══════════════════════════════════════════════════
 async function runTask(id) {
-  const btn = event.target;
-  btn.disabled = true; btn.textContent = '…';
   await fetch('/api/tasks/' + id + '/run', { method: 'POST' });
-  toast('Task queued — results in a few seconds', 'info');
-  btn.disabled = false; btn.textContent = '▶ Run';
-  setTimeout(loadState, 3000);
+  toast('Task dispatched to worker');
+  setTimeout(fetchState, 3000);
 }
 
-function resetTaskForm() {
-  $('editId').value = '';
+function clearTaskForm() {
+  $('taskEditId').value = '';
   $('taskForm').reset();
   $('taskUrl').value = 'https://vyceai.com/dashboard-v2';
   $('taskTime').value = '20:17';
   $('taskZone').value = 'Asia/Dhaka';
-  $('taskRetention').value = '12';
-  $('taskShot').checked = true;
-  $('formTitle').textContent = 'New task';
-  openTab('tasks');
+  $('taskSteps').value = '[]';
+  $('taskScreenshot').checked = true;
+  $('taskFormHeading').textContent = 'Task Configuration';
 }
 
 function editTask(id) {
   const t = (appState.tasks || []).find(x => x.id === id);
   if (!t) return;
-  $('editId').value = t.id;
+  $('taskEditId').value = t.id;
   $('taskName').value = t.name;
   $('taskKind').value = t.kind;
   $('taskUrl').value = t.url;
   $('taskTime').value = t.time;
   $('taskZone').value = t.timezone;
-  $('taskRetention').value = t.retention_hours;
-  $('taskEnabled').checked = t.enabled;
-  $('taskShot').checked = t.screenshot;
   $('taskSteps').value = JSON.stringify(t.steps || [], null, 2);
-  $('formTitle').textContent = 'Edit: ' + t.name;
-  openTab('tasks');
-  $('taskName').focus();
+  $('taskEnabled').checked = t.enabled;
+  $('taskScreenshot').checked = t.screenshot;
+  $('taskFormHeading').textContent = 'Edit: ' + t.name;
 }
 
 async function deleteTask(id) {
-  if (!confirm('Delete this task?')) return;
+  if (!confirm('Permanently delete this task definition?')) return;
   await fetch('/api/tasks/' + id, { method: 'DELETE' });
-  toast('Task deleted');
-  loadState();
+  toast('Task definition removed');
+  fetchState();
 }
 
 $('taskForm').onsubmit = async e => {
   e.preventDefault();
   let steps = [];
-  try { steps = JSON.parse($('taskSteps').value || '[]'); } catch { toast('Invalid JSON in steps field', 'error'); return; }
-  const p = {
-    name: $('taskName').value, kind: $('taskKind').value, url: $('taskUrl').value,
-    time: $('taskTime').value, timezone: $('taskZone').value,
-    enabled: $('taskEnabled').checked, screenshot: $('taskShot').checked,
-    retention_hours: +$('taskRetention').value || 12, steps
+  try { steps = JSON.parse($('taskSteps').value || '[]'); } catch(err) { toast('Invalid JSON in steps field'); return; }
+  const payload = {
+    name: $('taskName').value,
+    kind: $('taskKind').value,
+    url: $('taskUrl').value,
+    time: $('taskTime').value,
+    timezone: $('taskZone').value,
+    enabled: $('taskEnabled').checked,
+    screenshot: $('taskScreenshot').checked,
+    retention_hours: 12,
+    steps: steps
   };
-  const id = $('editId').value;
+  const id = $('taskEditId').value;
   await fetch(id ? '/api/tasks/' + id : '/api/tasks', {
     method: id ? 'PUT' : 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(p)
+    body: JSON.stringify(payload)
   });
-  toast('Task saved ✓');
-  loadState();
-  resetTaskForm();
+  toast('Task saved successfully');
+  clearTaskForm();
+  fetchState();
 };
 
-// ══════════════════════════════════════════════════
-// Screenshots
-// ══════════════════════════════════════════════════
-async function loadScreenshot() {
-  const panel = $('screenshotPanel');
-  const r = await fetch('/screenshot');
-  if (r.ok) {
-    const url = '/screenshot?t=' + Date.now();
-    panel.innerHTML = `
-      <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Latest screenshot</div>
-        <div class="screenshot-viewer"><img src="${url}" alt="Latest screenshot"></div>
-        <div style="margin-top:10px;display:flex;gap:8px">
-          <a href="${url}" target="_blank" class="btn btn-ghost btn-sm">↗ Open full</a>
-        </div>
-      </div>`;
+// Raw .env Editor Functions
+async function reloadEnv() {
+  const r = await fetch('/api/env');
+  const d = await r.json();
+  $('rawEnvEditor').value = d.raw || '';
+}
+
+async function saveRawEnv() {
+  const content = $('rawEnvEditor').value;
+  const r = await fetch('/api/env', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ env_content: content })
+  });
+  const d = await r.json();
+  if (d.ok) {
+    toast('Environment configuration saved');
+    $('envSaveStatus').textContent = 'Saved at ' + new Date().toLocaleTimeString();
   } else {
-    panel.innerHTML = '<div class="empty-state"><div class="empty-icon">📷</div>No screenshots yet. Run a task first.</div>';
+    toast('Error saving .env');
   }
 }
 
-// ══════════════════════════════════════════════════
-// AI Providers
-// ══════════════════════════════════════════════════
-const PROVIDER_ICONS = {
-  openrouter: '🌐', groq: '⚡', together: '🤝',
-  openai: '🧠', anthropic: '🤖', gemini: '♊', custom: '🔧'
+// Backup & Restore
+$('restoreForm').onsubmit = async e => {
+  e.preventDefault();
+  const fileInput = $('backupFileInput');
+  if (!fileInput.files.length) {
+    toast('Select a backup ZIP file first');
+    return;
+  }
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+  $('restoreStatus').textContent = 'Restoring archive...';
+  try {
+    const r = await fetch('/api/backup/restore', { method: 'POST', body: formData });
+    const d = await r.json();
+    $('restoreStatus').textContent = d.message || 'Restoration complete.';
+    toast('System state restored');
+    fetchState();
+    reloadEnv();
+  } catch(err) {
+    $('restoreStatus').textContent = 'Restore failed: ' + err.message;
+  }
 };
 
+// AI Providers
 async function loadProviders() {
-  $('providerGrid').innerHTML = '<div class="empty-state"><div class="spinner"></div><div style="margin-top:12px">Loading…</div></div>';
-  try {
-    const d = await (await fetch('/api/ai/models')).json();
-    providersData = d.providers || [];
-    activeProvider = d.active_provider || '';
-    activeModel = d.active_model || '';
-    renderProviders();
-    updateActiveAiDisplay();
-  } catch(e) {
-    $('providerGrid').innerHTML = '<div class="empty-state"><div class="empty-icon">❌</div>Failed to load providers</div>';
-  }
-}
+  const r = await fetch('/api/ai/models');
+  const d = await r.json();
+  providers = d.providers || [];
+  activeProvider = d.active_provider || '';
+  activeModel = d.active_model || '';
 
-function renderProviders() {
-  if (!providersData.length) { $('providerGrid').innerHTML = '<div class="empty-state">No providers</div>'; return; }
-  $('providerGrid').innerHTML = providersData.map(p => {
-    const isSelected = p.id === activeProvider;
-    const modelHtml = p.models.length
-      ? p.models.map(m => `<span class="model-chip ${p.id===activeProvider&&m===activeModel?'selected':''}" onclick="selectModel('${p.id}','${esc(m)}')" title="${esc(m)}">${esc(m.split('/').pop())}</span>`).join('')
-      : '<span style="font-size:11px;color:var(--muted)">Add API key to see models</span>';
-    return `
-    <div class="provider-card ${isSelected ? 'selected' : ''}" id="pcard-${p.id}">
-      <div class="provider-icon">${PROVIDER_ICONS[p.id] || '🔌'}</div>
-      <div class="provider-info">
-        <div class="provider-name">
-          ${esc(p.name)}
-          ${p.free ? '<span class="badge badge-green">FREE</span>' : ''}
-          <span class="badge ${p.connected ? 'badge-green' : 'badge-muted'}">${p.connected ? '● Connected' : '○ Not connected'}</span>
-          ${isSelected ? '<span class="badge badge-blue">● Active</span>' : ''}
+  $('metricAiProvider').textContent = activeProvider ? `Provider: ${activeProvider}` : 'No provider';
+  $('metricAiModel').textContent = activeModel ? activeModel.split('/').pop() : 'Default';
+
+  let html = '';
+  providers.forEach(p => {
+    const isConn = p.connected;
+    const isAct = p.id === activeProvider;
+    html += `
+    <div class="provider-row ${isAct ? 'active' : ''}">
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:10px">
+          <b>${esc(p.name)}</b>
+          ${p.free ? '<span class="tag tag-success">FREE TIER</span>' : ''}
+          <span class="tag ${isConn ? 'tag-success' : 'tag-default'}">${isConn ? 'CONNECTED' : 'DISCONNECTED'}</span>
+          ${isAct ? '<span class="tag tag-success">ACTIVE ENGINE</span>' : ''}
         </div>
-        ${!p.connected ? `<div style="font-size:11px;color:var(--amber);margin-top:5px">Add <code>${p.key_env}</code> in Settings to connect</div>` : ''}
-        <div class="model-chips">${modelHtml}</div>
+        <div class="provider-chips">
+          ${p.models.map(m => `<span class="chip ${m === activeModel && isAct ? 'selected' : ''}" onclick="selectModel('${p.id}','${esc(m)}')">${esc(m.split('/').pop())}</span>`).join('')}
+        </div>
       </div>
-      <div class="provider-actions">
-        ${p.connected && p.models.length ? `
-          <button class="btn btn-ghost btn-xs" onclick="testProviderModal('${p.id}','${esc(p.models[0])}')">🔍 Test</button>
-          <button class="btn ${isSelected ? 'btn-success' : 'btn-secondary'} btn-xs" onclick="selectModel('${p.id}','${esc(p.models[0])}')">
-            ${isSelected ? '✓ Active' : 'Use this'}
-          </button>
-        ` : `<button class="btn btn-ghost btn-xs" onclick="openTab('settings')">+ Add key</button>`}
+      <div>
+        ${isConn && p.models.length ? `<button class="btn btn-default btn-xs" onclick="testModel('${p.id}','${esc(p.models[0])}')">Test Connection</button>` : ''}
       </div>
     </div>`;
-  }).join('');
+  });
+  $('providersList').innerHTML = html;
 }
 
 async function selectModel(provider, model) {
@@ -1502,186 +1108,92 @@ async function selectModel(provider, model) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ provider, model })
   });
-  toast(`✓ Active: ${provider} / ${model.split('/').pop()}`, 'ok');
-  renderProviders();
-  updateActiveAiDisplay();
-  loadProvidersForChat();
+  toast(`Selected: ${provider} / ${model.split('/').pop()}`);
+  loadProviders();
 }
 
-function updateActiveAiDisplay() {
-  const label = activeProvider ? `${activeProvider} / ${(activeModel || 'default').split('/').pop()}` : 'No AI selected';
-  $('activeAiLabel').textContent = label;
-  $('chatAiLabel').textContent = label;
-  if ($('activeModelDisplay')) {
-    $('activeModelDisplay').innerHTML = activeProvider
-      ? `<div class="badge badge-green" style="font-size:13px;padding:6px 14px">${esc(activeProvider)} / ${esc((activeModel||'default').split('/').pop())}</div>`
-      : `<div style="font-size:13px;color:var(--muted)">None selected</div>`;
+async function testModel(provider, model) {
+  const out = $('testOutput');
+  out.style.display = 'block';
+  out.textContent = `Testing connection to [${provider}] with model [${model}]...`;
+  try {
+    const r = await fetch('/api/ai/test', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider, model, message: 'ping' })
+    });
+    const d = await r.json();
+    out.textContent = d.ok ? `Connection verified. Response: "${d.reply}"` : `Test failed: ${d.error}`;
+  } catch(e) {
+    out.textContent = `Error: ${e.message}`;
   }
 }
 
-function loadActiveAI() {
-  fetch('/api/ai/active').then(r => r.json()).then(d => {
-    activeProvider = d.provider || '';
-    activeModel = d.model || '';
-    updateActiveAiDisplay();
-  }).catch(() => {});
-}
-
-async function testProviderModal(provider, model) {
-  const res = $('testResult');
-  res.style.display = 'block';
-  res.className = 'test-result';
-  res.textContent = `Testing ${provider} / ${model}…`;
-  try {
-    const r = await fetch('/api/ai/test', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider, model, message: 'test' })
-    });
-    const d = await r.json();
-    res.className = 'test-result ' + (d.ok ? 'ok' : 'fail');
-    res.textContent = d.ok ? `✓ ${provider} connected! Reply: "${d.reply}"` : `✗ Failed: ${d.error}`;
-    if (d.ok) toast(`${provider} connection successful ✓`);
-    else toast(`${provider} test failed`, 'error');
-  } catch(e) { res.className = 'test-result fail'; res.textContent = '✗ Network error: ' + e.message; }
-}
-
-// ══════════════════════════════════════════════════
 // AI Chat
-// ══════════════════════════════════════════════════
-async function loadProvidersForChat() {
-  try {
-    const d = await (await fetch('/api/ai/models')).json();
-    providersData = d.providers || [];
-    activeProvider = d.active_provider || '';
-    activeModel = d.active_model || '';
+async function dispatchChat() {
+  const inp = $('chatInput');
+  const txt = inp.value.trim();
+  if (!txt) return;
 
-    const cp = $('chatProvider');
-    cp.innerHTML = providersData.map(p =>
-      `<option value="${p.id}" ${p.id === activeProvider ? 'selected' : ''}>${esc(p.name)}${p.free?' (free)':''}${!p.connected?' 🔒':''}</option>`
-    ).join('');
+  const log = $('chatLog');
+  log.innerHTML += `<div class="chat-bubble user">${esc(txt)}</div>`;
+  inp.value = '';
 
-    updateChatModels();
-    updateActiveAiDisplay();
-  } catch(e) {}
-}
-
-function updateChatModels() {
-  const cp = $('chatProvider');
-  const cm = $('chatModel');
-  const p = providersData.find(x => x.id === cp.value) || providersData[0];
-  if (!p) return;
-  cm.innerHTML = `<option value="">default model</option>` +
-    (p.models || []).map(m => `<option value="${esc(m)}" ${m === activeModel && p.id === activeProvider ? 'selected' : ''}>${esc(m.split('/').pop())}</option>`).join('');
-}
-
-function onChatProviderChange() { updateChatModels(); }
-
-function promptChat(text) { $('chatInput').value = text; sendChat(); }
-
-async function sendChat() {
-  const input = $('chatInput');
-  const msg = input.value.trim();
-  if (!msg) return;
-
-  const msgs = $('chatMessages');
-  msgs.insertAdjacentHTML('beforeend', `<div class="msg me">${esc(msg)}</div>`);
-  input.value = '';
-
-  const loadingId = 'loading-' + Date.now();
-  msgs.insertAdjacentHTML('beforeend', `<div class="msg ai loading" id="${loadingId}"><span class="spinner"></span> Thinking…</div>`);
-  msgs.scrollTop = msgs.scrollHeight;
-
-  const sendBtn = $('sendBtn');
-  sendBtn.disabled = true;
+  const tempId = 'temp-' + Date.now();
+  log.innerHTML += `<div class="chat-bubble bot" id="${tempId}">Analyzing request...</div>`;
+  log.scrollTop = log.scrollHeight;
 
   try {
     const r = await fetch('/api/ai/chat', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        message: msg,
-        provider: $('chatProvider').value,
-        model: $('chatModel').value
-      })
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: txt, provider: activeProvider, model: activeModel })
     });
     const d = await r.json();
-    const loadEl = document.getElementById(loadingId);
-    if (loadEl) loadEl.remove();
-    msgs.insertAdjacentHTML('beforeend', `<div class="msg ai">${esc(d.reply || d.error || 'No response')}</div>`);
-  } catch(e) {
-    const loadEl = document.getElementById(loadingId);
-    if (loadEl) loadEl.remove();
-    msgs.insertAdjacentHTML('beforeend', `<div class="msg ai" style="color:var(--red)">Error: ${esc(e.message)}</div>`);
+    const el = document.getElementById(tempId);
+    if (el) el.textContent = d.reply || d.error || 'No response returned.';
+  } catch(err) {
+    const el = document.getElementById(tempId);
+    if (el) el.textContent = 'Query failed: ' + err.message;
   }
-  sendBtn.disabled = false;
-  msgs.scrollTop = msgs.scrollHeight;
+  log.scrollTop = log.scrollHeight;
+}
+
+function promptPrompt(text) {
+  $('chatInput').value = text;
+  dispatchChat();
 }
 
 function clearChat() {
-  $('chatMessages').innerHTML = '<div class="msg ai">Chat cleared. How can I help you?</div>';
+  $('chatLog').innerHTML = '<div class="chat-bubble bot">Chat history cleared.</div>';
 }
 
-// ══════════════════════════════════════════════════
-// Settings
-// ══════════════════════════════════════════════════
-$('settingsForm').onsubmit = async e => {
-  e.preventDefault();
-  const p = {
-    automation_enabled: $('globalEnabled').checked,
-    timezone: $('setZone').value,
-    screenshot_retention_hours: +$('setRetention').value || 12,
-    openai_api_key: $('openaiKey').value,
-    openai_base_url: $('openaiBase').value,
-    anthropic_api_key: $('anthropicKey').value,
-    gemini_api_key: $('geminiKey').value,
-    openrouter_api_key: $('openrouterKey').value,
-    groq_api_key: $('groqKey').value,
-    together_api_key: $('togetherKey').value,
-    custom_ai_base_url: $('customBase').value,
-    custom_ai_api_key: $('customKey').value,
-    custom_ai_model: $('customModel').value,
-    active_provider: activeProvider,
-    active_model: activeModel,
-  };
-  await fetch('/api/settings', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(p)
-  });
-  toast('Settings saved securely ✓');
-};
+// Screenshot
+async function loadScreenshot() {
+  const c = $('screenshotContainer');
+  const r = await fetch('/screenshot');
+  if (r.ok) {
+    const url = '/screenshot?t=' + Date.now();
+    c.innerHTML = `
+      <div style="margin-bottom:10px">
+        <a href="${url}" target="_blank" class="btn btn-default btn-xs">Open Full Resolution</a>
+      </div>
+      <img src="${url}" style="max-width:100%;border:1px solid var(--border);border-radius:var(--radius-sm)">
+    `;
+  } else {
+    c.innerHTML = '<div style="font-size:12px;color:var(--text-muted)">No screenshots found on disk.</div>';
+  }
+}
 
-// ══════════════════════════════════════════════════
-// Notifications
-// ══════════════════════════════════════════════════
-$('notifForm').onsubmit = async e => {
-  e.preventDefault();
-  const p = {
-    telegram_bot_token: $('tgToken').value,
-    telegram_chat_id: $('tgChat').value,
-    webhook_url: $('webhook').value,
-    fcm_token: $('fcmToken').value,
-    google_service_account_json: $('googleJson').value,
-    automation_enabled: false, timezone: '', screenshot_retention_hours: 12,
-  };
-  await fetch('/api/settings', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(p)
-  });
-  toast('Notification settings saved ✓');
-};
-
-async function testNotifications() {
-  $('notifyResult').textContent = 'Sending test…';
+async function sendTestNotification() {
   const r = await fetch('/api/notifications/test', { method: 'POST' });
   const d = await r.json();
-  $('notifyResult').textContent = JSON.stringify(d.results || d);
-  toast('Notification test sent');
+  toast('Test notification dispatched');
 }
 
-// ══════════════════════════════════════════════════
-// Init
-// ══════════════════════════════════════════════════
-loadState();
-loadActiveAI();
+// Initial bootstrap
+fetchState();
+loadProviders();
 </script>
 </body>
 </html>

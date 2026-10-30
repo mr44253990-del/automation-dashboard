@@ -1,29 +1,51 @@
 from __future__ import annotations
 
-import json, os, threading, uuid
+import json, os, threading, uuid, shutil, zipfile
 from pathlib import Path
 from datetime import datetime, timezone
-from fastapi import FastAPI, Form
+from fastapi import FastAPI, Form, UploadFile, File
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from pydantic import BaseModel
 import requests
 
 ROOT = Path(__file__).resolve().parents[1]
-LOG_DIR, SCREENSHOT_DIR, DATA_DIR = ROOT / "logs", ROOT / "screenshots", ROOT / "data"
-for folder in (LOG_DIR, SCREENSHOT_DIR, DATA_DIR): folder.mkdir(exist_ok=True)
+LOG_DIR, SCREENSHOT_DIR, DATA_DIR, BACKUP_DIR = ROOT / "logs", ROOT / "screenshots", ROOT / "data", ROOT / "backups"
+for folder in (LOG_DIR, SCREENSHOT_DIR, DATA_DIR, BACKUP_DIR):
+    folder.mkdir(exist_ok=True)
 ENV_FILE, TASKS_FILE = ROOT / ".env", DATA_DIR / "tasks.json"
+
 app = FastAPI(title="Orbit Browser Assistant")
 
 DEFAULT_TASKS = [
-    {"id": "daily-rewards", "name": "Claim Daily Rewards", "kind": "daily_rewards", "url": "https://vyceai.com/dashboard-v2", "time": "20:17", "timezone": "Asia/Dhaka", "enabled": True, "screenshot": True, "retention_hours": 12},
-    {"id": "available-balance", "name": "Check Available Balance", "kind": "available_balance", "url": "https://vyceai.com/dashboard-v2", "time": "20:20", "timezone": "Asia/Dhaka", "enabled": False, "screenshot": True, "retention_hours": 12},
+    {
+        "id": "daily-rewards",
+        "name": "Claim Daily Rewards",
+        "kind": "daily_rewards",
+        "url": "https://vyceai.com/dashboard-v2",
+        "time": "20:17",
+        "timezone": "Asia/Dhaka",
+        "enabled": True,
+        "screenshot": True,
+        "retention_hours": 12
+    },
+    {
+        "id": "available-balance",
+        "name": "Check Available Balance",
+        "kind": "available_balance",
+        "url": "https://vyceai.com/dashboard-v2",
+        "time": "20:20",
+        "timezone": "Asia/Dhaka",
+        "enabled": False,
+        "screenshot": True,
+        "retention_hours": 12
+    },
 ]
 
-# ── Free AI provider definitions ──────────────────────────────────────────────
+# Free and standard AI provider configurations
 FREE_PROVIDERS = [
     {
         "id": "openrouter",
-        "name": "OpenRouter (Free)",
+        "name": "OpenRouter (Free Tier)",
         "base_url": "https://openrouter.ai/api/v1",
         "key_env": "OPENROUTER_API_KEY",
         "free": True,
@@ -40,7 +62,7 @@ FREE_PROVIDERS = [
     },
     {
         "id": "groq",
-        "name": "Groq (Free tier)",
+        "name": "Groq (High-Speed Free)",
         "base_url": "https://api.groq.com/openai/v1",
         "key_env": "GROQ_API_KEY",
         "free": True,
@@ -53,7 +75,7 @@ FREE_PROVIDERS = [
     },
     {
         "id": "together",
-        "name": "Together AI (Free tier)",
+        "name": "Together AI (Free Tier)",
         "base_url": "https://api.together.xyz/v1",
         "key_env": "TOGETHER_API_KEY",
         "free": True,
@@ -64,28 +86,28 @@ FREE_PROVIDERS = [
         ],
     },
     {
-        "id": "openai",
-        "name": "OpenAI",
-        "base_url": "https://api.openai.com/v1",
-        "key_env": "OPENAI_API_KEY",
-        "free": False,
-        "free_models": ["gpt-4o-mini", "gpt-3.5-turbo"],
-    },
-    {
-        "id": "anthropic",
-        "name": "Anthropic (Claude)",
-        "base_url": None,
-        "key_env": "ANTHROPIC_API_KEY",
-        "free": False,
-        "free_models": ["claude-3-5-haiku-latest", "claude-3-5-sonnet-latest"],
-    },
-    {
         "id": "gemini",
         "name": "Google Gemini",
         "base_url": None,
         "key_env": "GEMINI_API_KEY",
         "free": True,
         "free_models": ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"],
+    },
+    {
+        "id": "openai",
+        "name": "OpenAI",
+        "base_url": "https://api.openai.com/v1",
+        "key_env": "OPENAI_API_KEY",
+        "free": False,
+        "free_models": ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"],
+    },
+    {
+        "id": "anthropic",
+        "name": "Anthropic Claude",
+        "base_url": None,
+        "key_env": "ANTHROPIC_API_KEY",
+        "free": False,
+        "free_models": ["claude-3-5-haiku-latest", "claude-3-5-sonnet-latest"],
     },
     {
         "id": "custom",
@@ -97,133 +119,202 @@ FREE_PROVIDERS = [
     },
 ]
 
-AI_SYSTEM_PROMPT = """You are an intelligent automation assistant for a browser automation dashboard called "Orbit".
-You help users:
-- Plan and configure browser automation tasks (daily rewards, balance checks, custom Playwright steps)
-- Understand task results, logs and error messages
-- Write custom task step JSON for Playwright browser automation
-- Troubleshoot task failures, selectors, and login issues
-- Set up notifications (Telegram, webhook, FCM)
-- Configure AI providers and select the best free models
-- Understand scheduling and timezone configuration
+AI_SYSTEM_PROMPT = """You are Orbit AI Assistant, an expert browser automation engineer.
+You help operators:
+- Write and refine Playwright automation steps
+- Debug target selectors, timing, and login authentication
+- Configure daily reward claims, balance checks, and custom steps
+- Setup Telegram bots, webhooks, and push notifications
+- Recommend optimal free and high-speed AI providers
 
-When writing Playwright steps, use this JSON format:
+When proposing automation steps, format as valid JSON array:
 [
   {"action": "goto", "url": "https://example.com"},
-  {"action": "click", "selector": "button.submit"},
-  {"action": "fill", "selector": "#email", "value": "${TARGET_EMAIL}"},
+  {"action": "click", "selector": "button.primary"},
   {"action": "wait", "ms": 2000},
-  {"action": "extract_text", "selector": ".balance", "name": "balance"},
+  {"action": "extract_text", "selector": ".balance-val", "name": "balance"},
   {"action": "screenshot"}
 ]
-
-Available actions: goto, click, click_text, fill, wait, extract_text, screenshot.
-Always be helpful, concise and accurate. If a task fails, suggest fixes."""
+Actions allowed: goto, click, click_text, fill, wait, extract_text, screenshot.
+Keep answers professional, clean, and without emojis."""
 
 def load_env_file():
-    if not ENV_FILE.exists(): return
-    for line in ENV_FILE.read_text().splitlines():
-        if line.strip() and not line.lstrip().startswith("#") and "=" in line:
-            k, v = line.split("=", 1); os.environ.setdefault(k.strip(), v.strip().strip('"'))
+    if not ENV_FILE.exists():
+        return
+    for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip().strip('"'))
+
 load_env_file()
 
-def env_value(key: str, default: str = "") -> str: return os.getenv(key, default)
+def env_value(key: str, default: str = "") -> str:
+    return os.getenv(key, default)
+
+def get_all_env_dict() -> dict[str, str]:
+    """Returns all key-values from the .env file."""
+    res = {}
+    if ENV_FILE.exists():
+        for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                res[k.strip()] = v.strip().strip('"')
+    return res
 
 def update_env(values: dict[str, str]) -> None:
-    current = {}
-    if ENV_FILE.exists():
-        for line in ENV_FILE.read_text().splitlines():
-            if "=" in line and not line.lstrip().startswith("#"):
-                k, v = line.split("=", 1); current[k] = v
+    current = get_all_env_dict()
     current.update({k: str(v) for k, v in values.items() if v is not None})
-    ENV_FILE.write_text("\n".join(f"{k}={v}" for k,v in current.items()) + "\n")
-    os.chmod(ENV_FILE, 0o600); os.environ.update(current)
+    lines = [f"{k}={v}" for k, v in sorted(current.items())]
+    ENV_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    try:
+        os.chmod(ENV_FILE, 0o600)
+    except Exception:
+        pass
+    os.environ.update(current)
 
 def load_tasks():
-    if not TASKS_FILE.exists(): TASKS_FILE.write_text(json.dumps(DEFAULT_TASKS, ensure_ascii=False, indent=2))
-    try: return json.loads(TASKS_FILE.read_text())
-    except Exception: return DEFAULT_TASKS.copy()
+    if not TASKS_FILE.exists():
+        TASKS_FILE.write_text(json.dumps(DEFAULT_TASKS, ensure_ascii=False, indent=2), encoding="utf-8")
+    try:
+        return json.loads(TASKS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return DEFAULT_TASKS.copy()
 
-def save_tasks(tasks): TASKS_FILE.write_text(json.dumps(tasks, ensure_ascii=False, indent=2))
+def save_tasks(tasks):
+    TASKS_FILE.write_text(json.dumps(tasks, ensure_ascii=False, indent=2), encoding="utf-8")
 
 def state():
     p = LOG_DIR / "last_run.json"
-    if not p.exists(): return {"status": "not_run", "message": "No task has run yet."}
-    try: return json.loads(p.read_text())
-    except Exception: return {"status": "unknown"}
+    if not p.exists():
+        return {"status": "not_run", "message": "No task executed yet."}
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return {"status": "unknown"}
 
 def history():
     p = LOG_DIR / "history.json"
-    if not p.exists(): return []
-    try: return json.loads(p.read_text())[:30]
-    except Exception: return []
+    if not p.exists():
+        return []
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))[:30]
+    except Exception:
+        return []
+
+def make_backup_zip() -> Path:
+    """Creates a full system archive including tasks, logs, and env settings."""
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    zip_path = BACKUP_DIR / f"orbit_backup_{stamp}.zip"
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        if ENV_FILE.exists():
+            zf.write(ENV_FILE, arcname=".env")
+        if TASKS_FILE.exists():
+            zf.write(TASKS_FILE, arcname="data/tasks.json")
+        for f in LOG_DIR.glob("*.json"):
+            zf.write(f, arcname=f"logs/{f.name}")
+    return zip_path
+
+def restore_from_zip(zip_path: Path) -> dict[str, Any]:
+    """Restores tasks, env settings, and logs from a backup archive."""
+    with zipfile.ZipFile(zip_path, "r") as zf:
+        members = zf.namelist()
+        if ".env" in members:
+            content = zf.read(".env").decode("utf-8")
+            ENV_FILE.write_text(content, encoding="utf-8")
+            load_env_file()
+        if "data/tasks.json" in members:
+            content = zf.read("data/tasks.json").decode("utf-8")
+            TASKS_FILE.write_text(content, encoding="utf-8")
+        for m in members:
+            if m.startswith("logs/") and m.endswith(".json"):
+                target = LOG_DIR / Path(m).name
+                target.write_bytes(zf.read(m))
+    return {"ok": True, "message": "System successfully restored from backup."}
+
+@app.on_event("startup")
+def startup_tasks():
+    # Start telegram bot listener in background thread if configured
+    from app.telegram_bot import start_telegram_bot
+    start_telegram_bot()
 
 @app.get("/", response_class=HTMLResponse)
 def dashboard():
     from jinja2 import Environment, FileSystemLoader, select_autoescape
     template = Environment(loader=FileSystemLoader(str(ROOT / "templates")), autoescape=select_autoescape()).get_template("index.html")
     return HTMLResponse(template.render(
-        tasks=load_tasks(), state=state(), history=history(),
+        tasks=load_tasks(),
+        state=state(),
+        history=history(),
         enabled=env_value("AUTOMATION_ENABLED", "false"),
         timezone=env_value("SCHEDULE_TIMEZONE", "Asia/Dhaka"),
-        tg=bool(env_value("TELEGRAM_BOT_TOKEN"))
+        tg=bool(env_value("TELEGRAM_BOT_TOKEN")),
+        all_env=get_all_env_dict()
     ))
 
 class TaskPayload(BaseModel):
-    name: str; kind: str = "available_balance"; url: str = "https://vyceai.com/dashboard-v2"
-    time: str = "20:17"; timezone: str = "Asia/Dhaka"; enabled: bool = False
-    screenshot: bool = True; retention_hours: int = 12; steps: list[dict] = []
+    name: str
+    kind: str = "available_balance"
+    url: str = "https://vyceai.com/dashboard-v2"
+    time: str = "20:17"
+    timezone: str = "Asia/Dhaka"
+    enabled: bool = False
+    screenshot: bool = True
+    retention_hours: int = 12
+    steps: list[dict] = []
 
-class SettingsPayload(BaseModel):
-    automation_enabled: bool = False; timezone: str = "Asia/Dhaka"
-    telegram_bot_token: str = ""; telegram_chat_id: str = ""
-    webhook_url: str = ""; fcm_token: str = ""; google_service_account_json: str = ""
-    screenshot_retention_hours: int = 12
-    openai_api_key: str = ""; openai_base_url: str = "https://api.openai.com/v1"; openai_model: str = "gpt-4o-mini"
-    anthropic_api_key: str = ""; gemini_api_key: str = ""
-    openrouter_api_key: str = ""; groq_api_key: str = ""; together_api_key: str = ""
-    custom_ai_base_url: str = ""; custom_ai_api_key: str = ""; custom_ai_model: str = ""
-    active_provider: str = ""; active_model: str = ""
+class EnvUpdatePayload(BaseModel):
+    env_content: str = ""
+    env_dict: dict[str, str] = {}
 
 class ChatPayload(BaseModel):
-    message: str; provider: str = "openai"; model: str = ""
+    message: str
+    provider: str = "openai"
+    model: str = ""
 
 class ProviderSelectPayload(BaseModel):
-    provider: str; model: str
+    provider: str
+    model: str
 
 @app.get("/api/state")
-def api_state(): return {"state": state(), "history": history(), "tasks": load_tasks()}
+def api_state():
+    return {"state": state(), "history": history(), "tasks": load_tasks()}
 
-@app.post("/api/settings")
-def api_settings(payload: SettingsPayload):
-    values = {
-        "AUTOMATION_ENABLED": str(payload.automation_enabled).lower(),
-        "SCHEDULE_TIMEZONE": payload.timezone,
-        "SCREENSHOT_RETENTION_HOURS": payload.screenshot_retention_hours,
-        "OPENAI_BASE_URL": payload.openai_base_url,
-        "OPENAI_MODEL": payload.openai_model,
-        "CUSTOM_AI_BASE_URL": payload.custom_ai_base_url,
-        "CUSTOM_AI_MODEL": payload.custom_ai_model,
-    }
-    if payload.active_provider: values["ACTIVE_AI_PROVIDER"] = payload.active_provider
-    if payload.active_model: values["ACTIVE_AI_MODEL"] = payload.active_model
-    secrets = {
-        "TELEGRAM_BOT_TOKEN": payload.telegram_bot_token,
-        "TELEGRAM_CHAT_ID": payload.telegram_chat_id,
-        "WEBHOOK_URL": payload.webhook_url,
-        "FCM_TOKEN": payload.fcm_token,
-        "GOOGLE_SERVICE_ACCOUNT_JSON": payload.google_service_account_json,
-        "OPENAI_API_KEY": payload.openai_api_key,
-        "ANTHROPIC_API_KEY": payload.anthropic_api_key,
-        "GEMINI_API_KEY": payload.gemini_api_key,
-        "OPENROUTER_API_KEY": payload.openrouter_api_key,
-        "GROQ_API_KEY": payload.groq_api_key,
-        "TOGETHER_API_KEY": payload.together_api_key,
-        "CUSTOM_AI_API_KEY": payload.custom_ai_api_key,
-    }
-    values.update({k: v for k, v in secrets.items() if v})
-    update_env(values)
-    return {"ok": True}
+@app.get("/api/env")
+def api_get_env():
+    """Returns raw .env file text and parsed dictionary."""
+    content = ENV_FILE.read_text(encoding="utf-8") if ENV_FILE.exists() else ""
+    return {"raw": content, "dict": get_all_env_dict()}
+
+@app.post("/api/env")
+def api_save_env(payload: EnvUpdatePayload):
+    """Saves raw .env text directly from editor."""
+    if payload.env_content:
+        ENV_FILE.write_text(payload.env_content.strip() + "\n", encoding="utf-8")
+        try:
+            os.chmod(ENV_FILE, 0o600)
+        except Exception:
+            pass
+        load_env_file()
+        return {"ok": True, "message": "Environment configuration saved."}
+    elif payload.env_dict:
+        update_env(payload.env_dict)
+        return {"ok": True, "message": "Environment dictionary saved."}
+    return JSONResponse({"ok": False, "error": "No content provided"}, status_code=400)
+
+@app.get("/api/backup/download")
+def api_backup_download():
+    zip_path = make_backup_zip()
+    return FileResponse(zip_path, filename=zip_path.name, media_type="application/zip")
+
+@app.post("/api/backup/restore")
+async def api_backup_restore(file: UploadFile = File(...)):
+    dest = BACKUP_DIR / f"restore_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}"
+    with open(dest, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    res = restore_from_zip(dest)
+    return res
 
 @app.post("/api/provider/select")
 def select_provider(payload: ProviderSelectPayload):
@@ -233,23 +324,33 @@ def select_provider(payload: ProviderSelectPayload):
 @app.post("/api/notifications/test")
 def notification_test():
     from .worker import send_notifications
-    return {"ok": True, "results": send_notifications("Browser Assistant notification test succeeded.")}
+    return {"ok": True, "results": send_notifications("Orbit Assistant test notification successfully sent.")}
 
 @app.post("/api/tasks")
 def create_task(payload: TaskPayload):
-    tasks = load_tasks(); task = payload.model_dump(); task["id"] = uuid.uuid4().hex[:10]
-    tasks.append(task); save_tasks(tasks); return task
+    tasks = load_tasks()
+    task = payload.model_dump()
+    task["id"] = uuid.uuid4().hex[:10]
+    tasks.append(task)
+    save_tasks(tasks)
+    return task
 
 @app.put("/api/tasks/{task_id}")
 def update_task(task_id: str, payload: TaskPayload):
-    tasks = load_tasks(); updated = payload.model_dump(); updated["id"] = task_id
+    tasks = load_tasks()
+    updated = payload.model_dump()
+    updated["id"] = task_id
     for i, task in enumerate(tasks):
-        if task["id"] == task_id: tasks[i] = updated; save_tasks(tasks); return updated
+        if task["id"] == task_id:
+            tasks[i] = updated
+            save_tasks(tasks)
+            return updated
     return JSONResponse({"error": "Task not found"}, status_code=404)
 
 @app.delete("/api/tasks/{task_id}")
 def delete_task(task_id: str):
-    save_tasks([t for t in load_tasks() if t["id"] != task_id]); return {"ok": True}
+    save_tasks([t for t in load_tasks() if t["id"] != task_id])
+    return {"ok": True}
 
 @app.post("/api/tasks/{task_id}/run")
 def run_task_now(task_id: str):
@@ -258,10 +359,13 @@ def run_task_now(task_id: str):
     return {"ok": True, "message": "Task queued"}
 
 def _compat_models(base: str, key: str, fallback: list[str]) -> list[str]:
-    if not key: return fallback
+    if not key:
+        return fallback
     try:
-        response = requests.get(base.rstrip("/") + "/models",
-                                headers={"Authorization": "Bearer " + key}, timeout=20)
+        headers = {"Authorization": "Bearer " + key}
+        if "openrouter.ai" in base:
+            headers["HTTP-Referer"] = "https://orbit-assistant.app"
+        response = requests.get(base.rstrip("/") + "/models", headers=headers, timeout=15)
         response.raise_for_status()
         items = response.json().get("data", [])
         names = [item.get("id") for item in items if item.get("id")]
@@ -282,7 +386,7 @@ def ai_models():
         elif p["id"] == "openai":
             base = env_value("OPENAI_BASE_URL") or env_value("OPENAI_API_BASE") or p["base_url"]
             models = _compat_models(base, key, p["free_models"]) if connected else p["free_models"]
-        elif p["id"] == "anthropic" or p["id"] == "gemini":
+        elif p["id"] in ("anthropic", "gemini"):
             models = p["free_models"]
         elif p["base_url"]:
             models = _compat_models(p["base_url"], key, p["free_models"]) if connected else p["free_models"]
@@ -310,10 +414,15 @@ def ai_request(provider: str, model: str, message: str, use_system: bool = False
         url = "https://api.anthropic.com/v1/messages"
         key = env_value("ANTHROPIC_API_KEY")
         headers = {"x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"}
-        data: dict = {"model": model or "claude-3-5-haiku-latest", "max_tokens": 1200,
-                      "messages": [{"role": "user", "content": message}]}
-        if system: data["system"] = system
-        if not key: raise RuntimeError("Anthropic API key not configured.")
+        data: dict = {
+            "model": model or "claude-3-5-haiku-latest",
+            "max_tokens": 1200,
+            "messages": [{"role": "user", "content": message}]
+        }
+        if system:
+            data["system"] = system
+        if not key:
+            raise RuntimeError("Anthropic API key not configured.")
         r = requests.post(url, headers=headers, json=data, timeout=60)
         r.raise_for_status()
         return r.json()["content"][0]["text"]
@@ -324,16 +433,17 @@ def ai_request(provider: str, model: str, message: str, use_system: bool = False
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
         headers = {"content-type": "application/json"}
         contents = []
-        if system: contents.append({"role": "user", "parts": [{"text": system}]})
+        if system:
+            contents.append({"role": "user", "parts": [{"text": system}]})
         contents.append({"role": "user", "parts": [{"text": message}]})
         data = {"contents": contents}
-        if not key: raise RuntimeError("Gemini API key not configured.")
+        if not key:
+            raise RuntimeError("Gemini API key not configured.")
         r = requests.post(url, headers=headers, json=data, timeout=60)
         r.raise_for_status()
         return r.json()["candidates"][0]["content"]["parts"][0]["text"]
 
     else:
-        # OpenAI-compatible (OpenAI, OpenRouter, Groq, Together, Custom)
         if provider == "openrouter":
             base = "https://openrouter.ai/api/v1"
             key = env_value("OPENROUTER_API_KEY")
@@ -350,16 +460,18 @@ def ai_request(provider: str, model: str, message: str, use_system: bool = False
             base = env_value("CUSTOM_AI_BASE_URL", "https://api.openai.com/v1")
             key = env_value("CUSTOM_AI_API_KEY")
             extra_headers = {}
-        else:  # openai
+        else:
             base = env_value("OPENAI_BASE_URL") or env_value("OPENAI_API_BASE") or "https://api.openai.com/v1"
             key = env_value("OPENAI_API_KEY")
             extra_headers = {}
 
-        if not key: raise RuntimeError(f"{provider} API key not configured. Add it in Settings → AI Providers.")
+        if not key:
+            raise RuntimeError(f"{provider} API key not found. Add {provider.upper()}_API_KEY in Environment Settings.")
         url = base.rstrip("/") + "/chat/completions"
         headers = {"Authorization": "Bearer " + key, "Content-Type": "application/json", **extra_headers}
         messages = []
-        if system: messages.append({"role": "system", "content": system})
+        if system:
+            messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": message})
 
         fallback_model = env_value("CUSTOM_AI_MODEL", "custom-model") if provider == "custom" else env_value("OPENAI_MODEL", "gpt-4o-mini")
@@ -373,7 +485,6 @@ def ai_request(provider: str, model: str, message: str, use_system: bool = False
 
 @app.post("/api/ai/chat")
 def ai_chat(payload: ChatPayload):
-    # Use active provider if not specified
     provider = payload.provider or env_value("ACTIVE_AI_PROVIDER", "openai")
     model = payload.model or env_value("ACTIVE_AI_MODEL", "")
     try:
@@ -384,7 +495,7 @@ def ai_chat(payload: ChatPayload):
 @app.post("/api/ai/test")
 def ai_test(payload: ChatPayload):
     try:
-        return {"ok": True, "reply": ai_request(payload.provider, payload.model, "Reply with exactly: connection successful")}
+        return {"ok": True, "reply": ai_request(payload.provider, payload.model, "Test connection response: OK")}
     except Exception as exc:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
 
@@ -396,12 +507,13 @@ def ai_active():
     }
 
 @app.get("/health")
-def health(): return {"ok": True, "service": "orbit-browser-assistant"}
+def health():
+    return {"ok": True, "service": "orbit-browser-assistant"}
 
 @app.get("/screenshot")
 def screenshot():
     files = sorted(SCREENSHOT_DIR.glob("*.png"), key=lambda p: p.stat().st_mtime, reverse=True)
-    return FileResponse(files[0]) if files else JSONResponse({"error": "No screenshot yet"}, status_code=404)
+    return FileResponse(files[0]) if files else JSONResponse({"error": "No screenshots available."}, status_code=404)
 
 @app.get("/screenshot/{filename}")
 def screenshot_by_name(filename: str):
