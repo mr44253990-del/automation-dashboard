@@ -1,0 +1,24 @@
+[
+  {
+    "name": "Claim Daily Rewards",
+    "kind": "daily_rewards",
+    "url": "https://vyceai.com/dashboard-v2",
+    "time": "07:01",
+    "timezone": "Asia/Dhaka",
+    "enabled": true,
+    "screenshot": true,
+    "retention_hours": 12,
+    "id": "daily-rewards"
+  },
+  {
+    "name": "Check Available Balance",
+    "kind": "available_balance",
+    "url": "https://vyceai.com/dashboard-v2",
+    "time": "20:20",
+    "timezone": "Asia/Dhaka",
+    "enabled": true,
+    "screenshot": true,
+    "retention_hours": 12,
+    "id": "available-balance"
+  }
+]

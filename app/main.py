@@ -1,0 +1,409 @@
+from __future__ import annotations
+
+import json, os, threading, uuid
+from pathlib import Path
+from datetime import datetime, timezone
+from fastapi import FastAPI, Form
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
+from pydantic import BaseModel
+import requests
+
+ROOT = Path(__file__).resolve().parents[1]
+LOG_DIR, SCREENSHOT_DIR, DATA_DIR = ROOT / "logs", ROOT / "screenshots", ROOT / "data"
+for folder in (LOG_DIR, SCREENSHOT_DIR, DATA_DIR): folder.mkdir(exist_ok=True)
+ENV_FILE, TASKS_FILE = ROOT / ".env", DATA_DIR / "tasks.json"
+app = FastAPI(title="Orbit Browser Assistant")
+
+DEFAULT_TASKS = [
+    {"id": "daily-rewards", "name": "Claim Daily Rewards", "kind": "daily_rewards", "url": "https://vyceai.com/dashboard-v2", "time": "20:17", "timezone": "Asia/Dhaka", "enabled": True, "screenshot": True, "retention_hours": 12},
+    {"id": "available-balance", "name": "Check Available Balance", "kind": "available_balance", "url": "https://vyceai.com/dashboard-v2", "time": "20:20", "timezone": "Asia/Dhaka", "enabled": False, "screenshot": True, "retention_hours": 12},
+]
+
+# ── Free AI provider definitions ──────────────────────────────────────────────
+FREE_PROVIDERS = [
+    {
+        "id": "openrouter",
+        "name": "OpenRouter (Free)",
+        "base_url": "https://openrouter.ai/api/v1",
+        "key_env": "OPENROUTER_API_KEY",
+        "free": True,
+        "free_models": [
+            "meta-llama/llama-3.1-8b-instruct:free",
+            "mistralai/mistral-7b-instruct:free",
+            "google/gemma-2-9b-it:free",
+            "microsoft/phi-3-mini-128k-instruct:free",
+            "qwen/qwen-2-7b-instruct:free",
+            "openchat/openchat-7b:free",
+            "huggingfaceh4/zephyr-7b-beta:free",
+            "nousresearch/nous-capybara-7b:free",
+        ],
+    },
+    {
+        "id": "groq",
+        "name": "Groq (Free tier)",
+        "base_url": "https://api.groq.com/openai/v1",
+        "key_env": "GROQ_API_KEY",
+        "free": True,
+        "free_models": [
+            "llama-3.1-8b-instant",
+            "llama3-8b-8192",
+            "gemma2-9b-it",
+            "mixtral-8x7b-32768",
+        ],
+    },
+    {
+        "id": "together",
+        "name": "Together AI (Free tier)",
+        "base_url": "https://api.together.xyz/v1",
+        "key_env": "TOGETHER_API_KEY",
+        "free": True,
+        "free_models": [
+            "meta-llama/Llama-3-8b-chat-hf",
+            "mistralai/Mistral-7B-Instruct-v0.1",
+            "google/gemma-2b-it",
+        ],
+    },
+    {
+        "id": "openai",
+        "name": "OpenAI",
+        "base_url": "https://api.openai.com/v1",
+        "key_env": "OPENAI_API_KEY",
+        "free": False,
+        "free_models": ["gpt-4o-mini", "gpt-3.5-turbo"],
+    },
+    {
+        "id": "anthropic",
+        "name": "Anthropic (Claude)",
+        "base_url": None,
+        "key_env": "ANTHROPIC_API_KEY",
+        "free": False,
+        "free_models": ["claude-3-5-haiku-latest", "claude-3-5-sonnet-latest"],
+    },
+    {
+        "id": "gemini",
+        "name": "Google Gemini",
+        "base_url": None,
+        "key_env": "GEMINI_API_KEY",
+        "free": True,
+        "free_models": ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"],
+    },
+    {
+        "id": "custom",
+        "name": "Custom OpenAI-compatible",
+        "base_url": None,
+        "key_env": "CUSTOM_AI_API_KEY",
+        "free": False,
+        "free_models": [],
+    },
+]
+
+AI_SYSTEM_PROMPT = """You are an intelligent automation assistant for a browser automation dashboard called "Orbit".
+You help users:
+- Plan and configure browser automation tasks (daily rewards, balance checks, custom Playwright steps)
+- Understand task results, logs and error messages
+- Write custom task step JSON for Playwright browser automation
+- Troubleshoot task failures, selectors, and login issues
+- Set up notifications (Telegram, webhook, FCM)
+- Configure AI providers and select the best free models
+- Understand scheduling and timezone configuration
+
+When writing Playwright steps, use this JSON format:
+[
+  {"action": "goto", "url": "https://example.com"},
+  {"action": "click", "selector": "button.submit"},
+  {"action": "fill", "selector": "#email", "value": "${TARGET_EMAIL}"},
+  {"action": "wait", "ms": 2000},
+  {"action": "extract_text", "selector": ".balance", "name": "balance"},
+  {"action": "screenshot"}
+]
+
+Available actions: goto, click, click_text, fill, wait, extract_text, screenshot.
+Always be helpful, concise and accurate. If a task fails, suggest fixes."""
+
+def load_env_file():
+    if not ENV_FILE.exists(): return
+    for line in ENV_FILE.read_text().splitlines():
+        if line.strip() and not line.lstrip().startswith("#") and "=" in line:
+            k, v = line.split("=", 1); os.environ.setdefault(k.strip(), v.strip().strip('"'))
+load_env_file()
+
+def env_value(key: str, default: str = "") -> str: return os.getenv(key, default)
+
+def update_env(values: dict[str, str]) -> None:
+    current = {}
+    if ENV_FILE.exists():
+        for line in ENV_FILE.read_text().splitlines():
+            if "=" in line and not line.lstrip().startswith("#"):
+                k, v = line.split("=", 1); current[k] = v
+    current.update({k: str(v) for k, v in values.items() if v is not None})
+    ENV_FILE.write_text("\n".join(f"{k}={v}" for k,v in current.items()) + "\n")
+    os.chmod(ENV_FILE, 0o600); os.environ.update(current)
+
+def load_tasks():
+    if not TASKS_FILE.exists(): TASKS_FILE.write_text(json.dumps(DEFAULT_TASKS, ensure_ascii=False, indent=2))
+    try: return json.loads(TASKS_FILE.read_text())
+    except Exception: return DEFAULT_TASKS.copy()
+
+def save_tasks(tasks): TASKS_FILE.write_text(json.dumps(tasks, ensure_ascii=False, indent=2))
+
+def state():
+    p = LOG_DIR / "last_run.json"
+    if not p.exists(): return {"status": "not_run", "message": "No task has run yet."}
+    try: return json.loads(p.read_text())
+    except Exception: return {"status": "unknown"}
+
+def history():
+    p = LOG_DIR / "history.json"
+    if not p.exists(): return []
+    try: return json.loads(p.read_text())[:30]
+    except Exception: return []
+
+@app.get("/", response_class=HTMLResponse)
+def dashboard():
+    from jinja2 import Environment, FileSystemLoader, select_autoescape
+    template = Environment(loader=FileSystemLoader(str(ROOT / "templates")), autoescape=select_autoescape()).get_template("index.html")
+    return HTMLResponse(template.render(
+        tasks=load_tasks(), state=state(), history=history(),
+        enabled=env_value("AUTOMATION_ENABLED", "false"),
+        timezone=env_value("SCHEDULE_TIMEZONE", "Asia/Dhaka"),
+        tg=bool(env_value("TELEGRAM_BOT_TOKEN"))
+    ))
+
+class TaskPayload(BaseModel):
+    name: str; kind: str = "available_balance"; url: str = "https://vyceai.com/dashboard-v2"
+    time: str = "20:17"; timezone: str = "Asia/Dhaka"; enabled: bool = False
+    screenshot: bool = True; retention_hours: int = 12; steps: list[dict] = []
+
+class SettingsPayload(BaseModel):
+    automation_enabled: bool = False; timezone: str = "Asia/Dhaka"
+    telegram_bot_token: str = ""; telegram_chat_id: str = ""
+    webhook_url: str = ""; fcm_token: str = ""; google_service_account_json: str = ""
+    screenshot_retention_hours: int = 12
+    openai_api_key: str = ""; openai_base_url: str = "https://api.openai.com/v1"; openai_model: str = "gpt-4o-mini"
+    anthropic_api_key: str = ""; gemini_api_key: str = ""
+    openrouter_api_key: str = ""; groq_api_key: str = ""; together_api_key: str = ""
+    custom_ai_base_url: str = ""; custom_ai_api_key: str = ""; custom_ai_model: str = ""
+    active_provider: str = ""; active_model: str = ""
+
+class ChatPayload(BaseModel):
+    message: str; provider: str = "openai"; model: str = ""
+
+class ProviderSelectPayload(BaseModel):
+    provider: str; model: str
+
+@app.get("/api/state")
+def api_state(): return {"state": state(), "history": history(), "tasks": load_tasks()}
+
+@app.post("/api/settings")
+def api_settings(payload: SettingsPayload):
+    values = {
+        "AUTOMATION_ENABLED": str(payload.automation_enabled).lower(),
+        "SCHEDULE_TIMEZONE": payload.timezone,
+        "SCREENSHOT_RETENTION_HOURS": payload.screenshot_retention_hours,
+        "OPENAI_BASE_URL": payload.openai_base_url,
+        "OPENAI_MODEL": payload.openai_model,
+        "CUSTOM_AI_BASE_URL": payload.custom_ai_base_url,
+        "CUSTOM_AI_MODEL": payload.custom_ai_model,
+    }
+    if payload.active_provider: values["ACTIVE_AI_PROVIDER"] = payload.active_provider
+    if payload.active_model: values["ACTIVE_AI_MODEL"] = payload.active_model
+    secrets = {
+        "TELEGRAM_BOT_TOKEN": payload.telegram_bot_token,
+        "TELEGRAM_CHAT_ID": payload.telegram_chat_id,
+        "WEBHOOK_URL": payload.webhook_url,
+        "FCM_TOKEN": payload.fcm_token,
+        "GOOGLE_SERVICE_ACCOUNT_JSON": payload.google_service_account_json,
+        "OPENAI_API_KEY": payload.openai_api_key,
+        "ANTHROPIC_API_KEY": payload.anthropic_api_key,
+        "GEMINI_API_KEY": payload.gemini_api_key,
+        "OPENROUTER_API_KEY": payload.openrouter_api_key,
+        "GROQ_API_KEY": payload.groq_api_key,
+        "TOGETHER_API_KEY": payload.together_api_key,
+        "CUSTOM_AI_API_KEY": payload.custom_ai_api_key,
+    }
+    values.update({k: v for k, v in secrets.items() if v})
+    update_env(values)
+    return {"ok": True}
+
+@app.post("/api/provider/select")
+def select_provider(payload: ProviderSelectPayload):
+    update_env({"ACTIVE_AI_PROVIDER": payload.provider, "ACTIVE_AI_MODEL": payload.model})
+    return {"ok": True, "provider": payload.provider, "model": payload.model}
+
+@app.post("/api/notifications/test")
+def notification_test():
+    from .worker import send_notifications
+    return {"ok": True, "results": send_notifications("Browser Assistant notification test succeeded.")}
+
+@app.post("/api/tasks")
+def create_task(payload: TaskPayload):
+    tasks = load_tasks(); task = payload.model_dump(); task["id"] = uuid.uuid4().hex[:10]
+    tasks.append(task); save_tasks(tasks); return task
+
+@app.put("/api/tasks/{task_id}")
+def update_task(task_id: str, payload: TaskPayload):
+    tasks = load_tasks(); updated = payload.model_dump(); updated["id"] = task_id
+    for i, task in enumerate(tasks):
+        if task["id"] == task_id: tasks[i] = updated; save_tasks(tasks); return updated
+    return JSONResponse({"error": "Task not found"}, status_code=404)
+
+@app.delete("/api/tasks/{task_id}")
+def delete_task(task_id: str):
+    save_tasks([t for t in load_tasks() if t["id"] != task_id]); return {"ok": True}
+
+@app.post("/api/tasks/{task_id}/run")
+def run_task_now(task_id: str):
+    from .worker import run_task
+    threading.Thread(target=run_task, args=(task_id,), daemon=True).start()
+    return {"ok": True, "message": "Task queued"}
+
+def _compat_models(base: str, key: str, fallback: list[str]) -> list[str]:
+    if not key: return fallback
+    try:
+        response = requests.get(base.rstrip("/") + "/models",
+                                headers={"Authorization": "Bearer " + key}, timeout=20)
+        response.raise_for_status()
+        items = response.json().get("data", [])
+        names = [item.get("id") for item in items if item.get("id")]
+        return names[:80] or fallback
+    except Exception:
+        return fallback
+
+@app.get("/api/ai/models")
+def ai_models():
+    providers_out = []
+    for p in FREE_PROVIDERS:
+        key = env_value(p["key_env"])
+        connected = bool(key)
+        if p["id"] == "custom":
+            base = env_value("CUSTOM_AI_BASE_URL", "")
+            connected = bool(base and key)
+            models = _compat_models(base, key, [env_value("CUSTOM_AI_MODEL", "custom-model")]) if connected else []
+        elif p["id"] == "openai":
+            base = env_value("OPENAI_BASE_URL") or env_value("OPENAI_API_BASE") or p["base_url"]
+            models = _compat_models(base, key, p["free_models"]) if connected else p["free_models"]
+        elif p["id"] == "anthropic" or p["id"] == "gemini":
+            models = p["free_models"]
+        elif p["base_url"]:
+            models = _compat_models(p["base_url"], key, p["free_models"]) if connected else p["free_models"]
+        else:
+            models = p["free_models"]
+
+        providers_out.append({
+            "id": p["id"],
+            "name": p["name"],
+            "free": p.get("free", False),
+            "connected": connected,
+            "key_env": p["key_env"],
+            "models": models,
+            "base_url": p.get("base_url") or "",
+        })
+
+    active_provider = env_value("ACTIVE_AI_PROVIDER", "")
+    active_model = env_value("ACTIVE_AI_MODEL", "")
+    return {"providers": providers_out, "active_provider": active_provider, "active_model": active_model}
+
+def ai_request(provider: str, model: str, message: str, use_system: bool = False):
+    system = AI_SYSTEM_PROMPT if use_system else ""
+
+    if provider == "anthropic":
+        url = "https://api.anthropic.com/v1/messages"
+        key = env_value("ANTHROPIC_API_KEY")
+        headers = {"x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"}
+        data: dict = {"model": model or "claude-3-5-haiku-latest", "max_tokens": 1200,
+                      "messages": [{"role": "user", "content": message}]}
+        if system: data["system"] = system
+        if not key: raise RuntimeError("Anthropic API key not configured.")
+        r = requests.post(url, headers=headers, json=data, timeout=60)
+        r.raise_for_status()
+        return r.json()["content"][0]["text"]
+
+    elif provider == "gemini":
+        key = env_value("GEMINI_API_KEY")
+        model = model or "gemini-2.0-flash"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+        headers = {"content-type": "application/json"}
+        contents = []
+        if system: contents.append({"role": "user", "parts": [{"text": system}]})
+        contents.append({"role": "user", "parts": [{"text": message}]})
+        data = {"contents": contents}
+        if not key: raise RuntimeError("Gemini API key not configured.")
+        r = requests.post(url, headers=headers, json=data, timeout=60)
+        r.raise_for_status()
+        return r.json()["candidates"][0]["content"]["parts"][0]["text"]
+
+    else:
+        # OpenAI-compatible (OpenAI, OpenRouter, Groq, Together, Custom)
+        if provider == "openrouter":
+            base = "https://openrouter.ai/api/v1"
+            key = env_value("OPENROUTER_API_KEY")
+            extra_headers = {"HTTP-Referer": "https://orbit-assistant.app", "X-Title": "Orbit Assistant"}
+        elif provider == "groq":
+            base = "https://api.groq.com/openai/v1"
+            key = env_value("GROQ_API_KEY")
+            extra_headers = {}
+        elif provider == "together":
+            base = "https://api.together.xyz/v1"
+            key = env_value("TOGETHER_API_KEY")
+            extra_headers = {}
+        elif provider == "custom":
+            base = env_value("CUSTOM_AI_BASE_URL", "https://api.openai.com/v1")
+            key = env_value("CUSTOM_AI_API_KEY")
+            extra_headers = {}
+        else:  # openai
+            base = env_value("OPENAI_BASE_URL") or env_value("OPENAI_API_BASE") or "https://api.openai.com/v1"
+            key = env_value("OPENAI_API_KEY")
+            extra_headers = {}
+
+        if not key: raise RuntimeError(f"{provider} API key not configured. Add it in Settings → AI Providers.")
+        url = base.rstrip("/") + "/chat/completions"
+        headers = {"Authorization": "Bearer " + key, "Content-Type": "application/json", **extra_headers}
+        messages = []
+        if system: messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": message})
+
+        fallback_model = env_value("CUSTOM_AI_MODEL", "custom-model") if provider == "custom" else env_value("OPENAI_MODEL", "gpt-4o-mini")
+        data = {"model": model or fallback_model, "messages": messages, "max_tokens": 1200}
+        r = requests.post(url, headers=headers, json=data, timeout=60)
+        r.raise_for_status()
+        body = r.json()
+        if not body.get("choices"):
+            raise RuntimeError(f"{provider} returned no choices: {json.dumps(body, ensure_ascii=False)[:600]}")
+        return body["choices"][0]["message"]["content"]
+
+@app.post("/api/ai/chat")
+def ai_chat(payload: ChatPayload):
+    # Use active provider if not specified
+    provider = payload.provider or env_value("ACTIVE_AI_PROVIDER", "openai")
+    model = payload.model or env_value("ACTIVE_AI_MODEL", "")
+    try:
+        return {"ok": True, "reply": ai_request(provider, model, payload.message, use_system=True)}
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+
+@app.post("/api/ai/test")
+def ai_test(payload: ChatPayload):
+    try:
+        return {"ok": True, "reply": ai_request(payload.provider, payload.model, "Reply with exactly: connection successful")}
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+
+@app.get("/api/ai/active")
+def ai_active():
+    return {
+        "provider": env_value("ACTIVE_AI_PROVIDER", ""),
+        "model": env_value("ACTIVE_AI_MODEL", ""),
+    }
+
+@app.get("/health")
+def health(): return {"ok": True, "service": "orbit-browser-assistant"}
+
+@app.get("/screenshot")
+def screenshot():
+    files = sorted(SCREENSHOT_DIR.glob("*.png"), key=lambda p: p.stat().st_mtime, reverse=True)
+    return FileResponse(files[0]) if files else JSONResponse({"error": "No screenshot yet"}, status_code=404)
+
+@app.get("/screenshot/{filename}")
+def screenshot_by_name(filename: str):
+    path = SCREENSHOT_DIR / filename
+    return FileResponse(path) if path.exists() else JSONResponse({"error": "Not found"}, status_code=404)
