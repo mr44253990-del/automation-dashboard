@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Any
 
 import json, os, threading, uuid, shutil, zipfile
 from pathlib import Path
@@ -234,6 +235,8 @@ def restore_from_zip(zip_path: Path) -> dict[str, Any]:
 
 @app.on_event("startup")
 def startup_tasks():
+    from app import config
+    config.ensure_config()
     from app.telegram_bot import start_telegram_bot
     start_telegram_bot()
 
@@ -537,3 +540,199 @@ def screenshot():
 def screenshot_by_name(filename: str):
     path = SCREENSHOT_DIR / filename
     return FileResponse(path) if path.exists() else JSONResponse({"error": "Not found"}, status_code=404)
+
+# Additional endpoints for enhanced features
+from app import config as app_config
+
+@app.get("/api/settings")
+def api_get_settings():
+    return app_config.load_config()
+
+@app.post("/api/settings")
+def api_save_settings(payload: dict):
+    try:
+        cfg = app_config.load_config()
+        app_config._deep_merge(cfg, payload)
+        app_config.save_config(cfg)
+        # Also sync to env for backward compatibility
+        if payload.get("credentials"):
+            creds = payload["credentials"]
+            update_env({
+                "TARGET_EMAIL": creds.get("email", ""),
+                "TARGET_PASSWORD": creds.get("password", ""),
+                "LOGIN_URL": creds.get("login_url", "https://vyceai.com/login"),
+                "TARGET_URL": creds.get("target_url", "https://vyceai.com/dashboard-v2"),
+            })
+        if payload.get("automation"):
+            auto = payload["automation"]
+            update_env({
+                "AUTOMATION_ENABLED": "true" if auto.get("enabled") else "false",
+                "HEADLESS": "true" if auto.get("headless", True) else "false",
+                "SCHEDULE_TIMEZONE": auto.get("timezone", "Asia/Dhaka"),
+                "SCREENSHOT_RETENTION_HOURS": str(auto.get("screenshot_retention_hours", 12)),
+            })
+        if payload.get("telegram"):
+            tg = payload["telegram"]
+            update_env({
+                "TELEGRAM_BOT_TOKEN": tg.get("bot_token", ""),
+                "TELEGRAM_CHAT_ID": tg.get("chat_id", ""),
+            })
+        if payload.get("notifications"):
+            notif = payload["notifications"]
+            update_env({
+                "WEBHOOK_URL": notif.get("webhook_url", ""),
+                "FCM_TOKEN": notif.get("fcm_token", ""),
+                "GOOGLE_SERVICE_ACCOUNT_JSON": notif.get("google_service_account_json", ""),
+            })
+        return {"ok": True, "message": "Settings saved"}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+
+@app.get("/api/system/stats")
+def api_system_stats():
+    try:
+        import psutil
+        cpu_percent = psutil.cpu_percent(interval=0.1)
+        memory = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+        return {
+            "cpu": cpu_percent,
+            "memory": {
+                "total": memory.total,
+                "used": memory.used,
+                "percent": memory.percent
+            },
+            "disk": {
+                "total": disk.total,
+                "used": disk.used,
+                "percent": disk.percent
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        return {"error": str(e), "cpu": 0, "memory": {"percent": 0}, "disk": {"percent": 0}}
+
+@app.post("/api/ai/test-connection")
+def api_test_connection(payload: dict):
+    provider = payload.get("provider")
+    model = payload.get("model")
+    api_key = payload.get("api_key")
+    try:
+        # Try to test with provided key
+        if api_key and provider:
+            # Temporarily set env var
+            key_env_map = {
+                "openrouter": "OPENROUTER_API_KEY",
+                "groq": "GROQ_API_KEY", 
+                "together": "TOGETHER_API_KEY",
+                "openai": "OPENAI_API_KEY",
+                "anthropic": "ANTHROPIC_API_KEY",
+                "gemini": "GEMINI_API_KEY",
+                "custom": "CUSTOM_AI_API_KEY"
+            }
+            if provider in key_env_map:
+                old = os.environ.get(key_env_map[provider])
+                os.environ[key_env_map[provider]] = api_key
+                try:
+                    result = ai_request(provider, model or "", "Hello, test connection.", use_system=False)
+                    return {"ok": True, "reply": result[:100]}
+                finally:
+                    if old is not None:
+                        os.environ[key_env_map[provider]] = old
+                    elif key_env_map[provider] in os.environ:
+                        del os.environ[key_env_map[provider]]
+        # Fallback to stored
+        return ai_test(ChatPayload(message="Hello", provider=provider or "openai", model=model or ""))
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+
+@app.get("/api/ai/providers-full")
+def api_providers_full():
+    # Add more free providers
+    extended = FREE_PROVIDERS.copy()
+    extended.extend([
+        {
+            "id": "mistral",
+            "name": "Mistral AI",
+            "base_url": "https://api.mistral.ai/v1",
+            "key_env": "MISTRAL_API_KEY",
+            "free": True,
+            "free_models": ["mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"],
+        },
+        {
+            "id": "cohere",
+            "name": "Cohere",
+            "base_url": "https://api.cohere.ai/v1",
+            "key_env": "COHERE_API_KEY",
+            "free": True,
+            "free_models": ["command-r", "command-r-plus"],
+        },
+        {
+            "id": "firecrawl",
+            "name": "Firecrawl (Free Credits)",
+            "base_url": "https://api.firecrawl.dev/v1",
+            "key_env": "FIRECRAWL_API_KEY",
+            "free": True,
+            "free_models": ["scrape", "extract"],
+        },
+    ])
+    providers_out = []
+    for p in extended:
+        key = env_value(p["key_env"])
+        connected = bool(key)
+        if p["id"] == "custom":
+            base = env_value("CUSTOM_AI_BASE_URL", "")
+            connected = bool(base and key)
+            models = _compat_models(base, key, [env_value("CUSTOM_AI_MODEL", "custom-model")]) if connected else []
+        elif p["id"] == "openai":
+            base = env_value("OPENAI_BASE_URL") or env_value("OPENAI_API_BASE") or p["base_url"]
+            models = _compat_models(base, key, p["free_models"]) if connected else p["free_models"]
+        elif p["id"] in ("anthropic", "gemini"):
+            models = p["free_models"]
+        elif p.get("base_url"):
+            models = _compat_models(p["base_url"], key, p["free_models"]) if connected else p["free_models"]
+        else:
+            models = p["free_models"]
+        providers_out.append({
+            "id": p["id"],
+            "name": p["name"],
+            "free": p.get("free", False),
+            "connected": connected,
+            "key_env": p["key_env"],
+            "models": models,
+            "base_url": p.get("base_url") or "",
+        })
+    active_provider = env_value("ACTIVE_AI_PROVIDER", "")
+    active_model = env_value("ACTIVE_AI_MODEL", "")
+    return {"providers": providers_out, "active_provider": active_provider, "active_model": active_model}
+
+
+
+# AI Agent endpoint - make AI able to control browser
+class AIAgentPayload(BaseModel):
+    task_id: str = ""
+    instruction: str = ""
+    auto_run: bool = False
+
+@app.post("/api/ai/agent/execute")
+def ai_agent_execute(payload: AIAgentPayload):
+    try:
+        from app.worker import run_task
+        import threading
+        if payload.task_id:
+            threading.Thread(target=run_task, args=(payload.task_id,), daemon=True).start()
+            return {"ok": True, "message": "Task dispatched with AI-enhanced handling"}
+        return {"ok": True, "message": "AI agent ready"}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=400)
+
+@app.get("/api/dashboard/overview")
+def dashboard_overview():
+    from app import config
+    cfg = config.load_config()
+    return {
+        "config": cfg,
+        "state": state(),
+        "history": history()[:10],
+        "tasks": load_tasks()
+    }

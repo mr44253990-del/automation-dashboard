@@ -8,6 +8,8 @@ from typing import Any
 import requests
 from playwright.sync_api import sync_playwright
 
+from app import config
+
 ROOT = Path(__file__).resolve().parents[1]
 LOG_DIR = ROOT / "logs"
 SCREENSHOT_DIR = ROOT / "screenshots"
@@ -264,12 +266,17 @@ def _is_logged_in(page) -> bool:
 
 def _login(page, task_id: str = "") -> None:
     """Smart login routine with SPA hydration waiting, redirects handling, and multi-selector fallbacks."""
-    email = os.getenv("TARGET_EMAIL", "").strip()
-    password = os.getenv("TARGET_PASSWORD", "").strip()
+    cfg = config.load_config()
+    email = cfg.get("credentials", {}).get("email") or os.getenv("TARGET_EMAIL", "")
+    password = cfg.get("credentials", {}).get("password") or os.getenv("TARGET_PASSWORD", "")
+    email = email.strip()
+    password = password.strip()
     if not email or not password:
-        raise RuntimeError("TARGET_EMAIL or TARGET_PASSWORD not configured in Settings / .env")
+        raise RuntimeError("Email or Password not configured in Settings. Please set them in the app settings.")
 
-    target_login_url = os.getenv("LOGIN_URL", "https://vyceai.com/login").strip()
+    cfg = config.load_config()
+    target_login_url = cfg.get("credentials", {}).get("login_url") or os.getenv("LOGIN_URL", "https://vyceai.com/login")
+    target_login_url = target_login_url.strip()
     update_live_status(f"Navigating to login page: {target_login_url}", page, task_id)
     
     page.goto(target_login_url, wait_until="networkidle", timeout=60000)
@@ -450,10 +457,22 @@ def run_task(task_id: str = "daily-rewards") -> dict[str, Any]:
             _login(page, task_id)
 
             # Navigate to task URL
-            target_task_url = task.get("url", "https://vyceai.com/dashboard-v2")
+            cfg = config.load_config()
+            target_task_url = task.get("url") or cfg.get("credentials", {}).get("target_url") or "https://vyceai.com/dashboard-v2"
             update_live_status(f"Navigating to task URL: {target_task_url}", page, task_id)
             page.goto(target_task_url, wait_until="domcontentloaded", timeout=60000)
             page.wait_for_timeout(4000)
+            # Try to dismiss premium/popups
+            try:
+                from app.worker_enhanced import detect_and_dismiss_premium_popup, human_like_move
+                detect_and_dismiss_premium_popup(page, task_id)
+                # Do a small human-like mouse movement to appear smart
+                try:
+                    human_like_move(page, 300, 200)
+                except Exception:
+                    pass
+            except Exception:
+                pass
             update_live_status("Page loaded. Executing task routine...", page, task_id)
 
             if task.get("kind") == "daily_rewards":

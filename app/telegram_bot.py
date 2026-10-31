@@ -14,6 +14,8 @@ import json, os, threading, time, requests
 from pathlib import Path
 from datetime import datetime, timezone
 
+from app import config
+
 ROOT = Path(__file__).resolve().parents[1]
 ENV_FILE = ROOT / ".env"
 
