@@ -52,7 +52,6 @@ def ensure_config():
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     if not CONFIG_FILE.exists():
         save_config(DEFAULT_CONFIG.copy())
-    return load_config()
 
 
 def load_config() -> dict[str, Any]:
