@@ -13,6 +13,8 @@ LOG_DIR, SCREENSHOT_DIR, DATA_DIR, BACKUP_DIR = ROOT / "logs", ROOT / "screensho
 for folder in (LOG_DIR, SCREENSHOT_DIR, DATA_DIR, BACKUP_DIR):
     folder.mkdir(exist_ok=True)
 ENV_FILE, TASKS_FILE = ROOT / ".env", DATA_DIR / "tasks.json"
+LIVE_SCREENSHOT_FILE = SCREENSHOT_DIR / "live.png"
+LIVE_STATE_FILE = LOG_DIR / "live_state.json"
 
 app = FastAPI(title="Orbit Browser Assistant")
 
@@ -153,7 +155,6 @@ def env_value(key: str, default: str = "") -> str:
     return os.getenv(key, default)
 
 def get_all_env_dict() -> dict[str, str]:
-    """Returns all key-values from the .env file."""
     res = {}
     if ENV_FILE.exists():
         for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
@@ -204,7 +205,6 @@ def history():
         return []
 
 def make_backup_zip() -> Path:
-    """Creates a full system archive including tasks, logs, and env settings."""
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     zip_path = BACKUP_DIR / f"orbit_backup_{stamp}.zip"
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -217,7 +217,6 @@ def make_backup_zip() -> Path:
     return zip_path
 
 def restore_from_zip(zip_path: Path) -> dict[str, Any]:
-    """Restores tasks, env settings, and logs from a backup archive."""
     with zipfile.ZipFile(zip_path, "r") as zf:
         members = zf.namelist()
         if ".env" in members:
@@ -235,7 +234,6 @@ def restore_from_zip(zip_path: Path) -> dict[str, Any]:
 
 @app.on_event("startup")
 def startup_tasks():
-    # Start telegram bot listener in background thread if configured
     from app.telegram_bot import start_telegram_bot
     start_telegram_bot()
 
@@ -281,15 +279,35 @@ class ProviderSelectPayload(BaseModel):
 def api_state():
     return {"state": state(), "history": history(), "tasks": load_tasks()}
 
+@app.get("/api/live")
+def api_live_state():
+    """Returns live browser execution step, URL, and timestamp."""
+    live_info = {"step": "Idle - No active task running", "timestamp": "", "url": ""}
+    if LIVE_STATE_FILE.exists():
+        try:
+            live_info = json.loads(LIVE_STATE_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    has_image = LIVE_SCREENSHOT_FILE.exists()
+    return {"live": live_info, "has_frame": has_image}
+
+@app.get("/api/live/frame")
+def api_live_frame():
+    """Serves the latest real-time browser frame."""
+    if LIVE_SCREENSHOT_FILE.exists():
+        return FileResponse(LIVE_SCREENSHOT_FILE, media_type="image/png", headers={"Cache-Control": "no-cache, no-store, must-revalidate"})
+    files = sorted(SCREENSHOT_DIR.glob("*.png"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if files:
+        return FileResponse(files[0], media_type="image/png")
+    return JSONResponse({"error": "No live frame ready"}, status_code=404)
+
 @app.get("/api/env")
 def api_get_env():
-    """Returns raw .env file text and parsed dictionary."""
     content = ENV_FILE.read_text(encoding="utf-8") if ENV_FILE.exists() else ""
     return {"raw": content, "dict": get_all_env_dict()}
 
 @app.post("/api/env")
 def api_save_env(payload: EnvUpdatePayload):
-    """Saves raw .env text directly from editor."""
     if payload.env_content:
         ENV_FILE.write_text(payload.env_content.strip() + "\n", encoding="utf-8")
         try:
@@ -512,7 +530,7 @@ def health():
 
 @app.get("/screenshot")
 def screenshot():
-    files = sorted(SCREENSHOT_DIR.glob("*.png"), key=lambda p: p.stat().st_mtime, reverse=True)
+    files = sorted([p for p in SCREENSHOT_DIR.glob("*.png") if p.name != "live.png"], key=lambda p: p.stat().st_mtime, reverse=True)
     return FileResponse(files[0]) if files else JSONResponse({"error": "No screenshots available."}, status_code=404)
 
 @app.get("/screenshot/{filename}")

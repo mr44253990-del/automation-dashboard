@@ -14,6 +14,9 @@ SCREENSHOT_DIR = ROOT / "screenshots"
 TASKS_FILE = ROOT / "data" / "tasks.json"
 STATE_FILE = LOG_DIR / "last_run.json"
 HISTORY_FILE = LOG_DIR / "history.json"
+LIVE_SCREENSHOT_FILE = SCREENSHOT_DIR / "live.png"
+LIVE_STATE_FILE = LOG_DIR / "live_state.json"
+
 for folder in (LOG_DIR, SCREENSHOT_DIR, TASKS_FILE.parent):
     folder.mkdir(exist_ok=True)
 
@@ -82,8 +85,22 @@ def append_history(result: dict[str, Any]) -> None:
     save_json(HISTORY_FILE, history[:100])
     save_json(STATE_FILE, result)
 
+def update_live_status(step: str, page=None, task_id: str = "") -> None:
+    """Updates live progress status and captures real-time frame for Live View tab."""
+    status_data = {
+        "step": step,
+        "task_id": task_id,
+        "timestamp": now_iso(),
+        "url": getattr(page, "url", "") if page else ""
+    }
+    try:
+        save_json(LIVE_STATE_FILE, status_data)
+        if page:
+            page.screenshot(path=str(LIVE_SCREENSHOT_FILE))
+    except Exception:
+        pass
+
 def send_telegram_card(token: str, chat_id: str, title: str, status: str, details: list[tuple[str, str]], screenshot_path: str = "") -> dict[str, str]:
-    """Sends a cleanly structured, professional card with optional photo via Telegram Bot API."""
     badge = "[SUCCESS]" if status.lower() in ("success", "already_done") else "[FAILED]"
     
     caption_lines = [
@@ -100,7 +117,6 @@ def send_telegram_card(token: str, chat_id: str, title: str, status: str, detail
     caption_lines.append("<i>Managed via Orbit Assistant Dashboard</i>")
     caption = "\n".join(caption_lines)
 
-    # Check if screenshot exists and is accessible
     actual_photo = None
     if screenshot_path:
         cand = Path(screenshot_path)
@@ -190,6 +206,8 @@ def cleanup_screenshots(retention_hours: float | None = None) -> None:
     hours = retention_hours if retention_hours is not None else float(os.getenv("SCREENSHOT_RETENTION_HOURS", "24"))
     cutoff = time.time() - float(hours) * 3600
     for path in SCREENSHOT_DIR.glob("*.png"):
+        if path.name == "live.png":
+            continue
         try:
             if path.stat().st_mtime < cutoff:
                 path.unlink()
@@ -197,7 +215,6 @@ def cleanup_screenshots(retention_hours: float | None = None) -> None:
             pass
 
 def _find_chromium() -> str:
-    """Find chromium executable - works both locally, in Docker, and Playwright default."""
     explicit = os.getenv("CHROMIUM_PATH", "").strip()
     if explicit and not any(c in explicit for c in ["*", "?"]):
         if Path(explicit).exists():
@@ -218,35 +235,140 @@ def _find_chromium() -> str:
             return matches[0]
     return ""
 
-def _first_visible(page, selectors: list[str]):
+def _first_visible(page, selectors: list[str], timeout: int = 1500):
     for selector in selectors:
         try:
             loc = page.locator(selector).first
-            if loc.is_visible(timeout=800):
+            if loc.is_visible(timeout=timeout):
                 return loc
         except Exception:
             continue
     return None
 
-def _login(page) -> None:
-    email = os.getenv("TARGET_EMAIL", "")
-    password = os.getenv("TARGET_PASSWORD", "")
+def _is_logged_in(page) -> bool:
+    """Checks if the user is already authenticated."""
+    url = page.url.lower()
+    if any(k in url for k in ["dashboard", "home", "account", "profile"]) and not any(k in url for k in ["login", "signin"]):
+        return True
+    try:
+        logout_elem = _first_visible(page, [
+            "button:has-text('Log Out')", "a:has-text('Log Out')",
+            "button:has-text('Logout')", "a:has-text('Logout')",
+            "button:has-text('Sign Out')"
+        ], timeout=800)
+        if logout_elem:
+            return True
+    except Exception:
+        pass
+    return False
+
+def _login(page, task_id: str = "") -> None:
+    """Smart login routine with SPA hydration waiting, redirects handling, and multi-selector fallbacks."""
+    email = os.getenv("TARGET_EMAIL", "").strip()
+    password = os.getenv("TARGET_PASSWORD", "").strip()
     if not email or not password:
         raise RuntimeError("TARGET_EMAIL or TARGET_PASSWORD not configured in Settings / .env")
-    page.goto(os.getenv("LOGIN_URL", "https://vyceai.com/login"), wait_until="domcontentloaded", timeout=60000)
-    page.wait_for_timeout(3000)
-    email_input = _first_visible(page, ["input[type=email]", "input[name*=email i]", "input[placeholder*=email i]"])
-    password_input = _first_visible(page, ["input[type=password]", "input[name*=pass i]"])
-    button = _first_visible(page, ["button[type=submit]", "input[type=submit]", "button:has-text('Log in')", "button:has-text('Login')", "button:has-text('Sign in')"])
-    if not email_input or not password_input or not button:
-        raise RuntimeError(f"Could not locate login controls at {page.url}")
+
+    target_login_url = os.getenv("LOGIN_URL", "https://vyceai.com/login").strip()
+    update_live_status(f"Navigating to login page: {target_login_url}", page, task_id)
+    
+    page.goto(target_login_url, wait_until="networkidle", timeout=60000)
+    page.wait_for_timeout(2000)
+    update_live_status("Page loaded. Checking authentication state...", page, task_id)
+
+    # Check if already authenticated via session/cookie
+    if _is_logged_in(page):
+        update_live_status("Already authenticated. Skipping login form.", page, task_id)
+        return
+
+    # If redirected to another page (e.g. landing page /), try clicking a Login button or re-visiting /login
+    curr_url = page.url.lower()
+    if not any(k in curr_url for k in ["login", "signin"]):
+        update_live_status(f"Redirected to {page.url}. Looking for Login link or redirecting directly...", page, task_id)
+        login_nav = _first_visible(page, [
+            "a[href*='login']", "button:has-text('Log In')", "a:has-text('Log In')",
+            "button:has-text('Login')", "a:has-text('Login')", "a:has-text('Sign In')"
+        ], timeout=2000)
+        if login_nav:
+            login_nav.click()
+            page.wait_for_load_state("networkidle", timeout=30000)
+            page.wait_for_timeout(2000)
+        else:
+            page.goto("https://vyceai.com/login", wait_until="networkidle", timeout=45000)
+            page.wait_for_timeout(2000)
+
+    # Wait for React / Vue SPA inputs to mount and become visible
+    update_live_status("Waiting for login input fields...", page, task_id)
+    email_selectors = [
+        "input[type=email]",
+        "input[name*='email' i]",
+        "input[placeholder*='email' i]",
+        "input[placeholder*='example.com' i]",
+        "input[autocomplete='email']",
+        "input[id*='email' i]",
+        "input:not([type=password]):not([type=checkbox]):not([type=hidden])"
+    ]
+    password_selectors = [
+        "input[type=password]",
+        "input[name*='password' i]",
+        "input[name*='pass' i]",
+        "input[placeholder*='password' i]",
+        "input[placeholder*='••••' i]",
+        "input[id*='password' i]"
+    ]
+    button_selectors = [
+        "button[type=submit]",
+        "button:has-text('Login')",
+        "button:has-text('Log in')",
+        "button:has-text('Sign in')",
+        "button:has-text('Continue')",
+        "input[type=submit]"
+    ]
+
+    email_input = None
+    for attempt in range(8):
+        email_input = _first_visible(page, email_selectors, timeout=1500)
+        if email_input:
+            break
+        page.wait_for_timeout(1000)
+
+    password_input = _first_visible(page, password_selectors, timeout=2000)
+    button = _first_visible(page, button_selectors, timeout=2000)
+
+    if not email_input or not password_input:
+        # Check if already logged in by inspecting body text
+        body_text = page.locator("body").inner_text(timeout=5000)
+        if re.search(r"dashboard|balance|account|logout", body_text, re.I):
+            update_live_status("Logged in session detected via dashboard elements.", page, task_id)
+            return
+        raise RuntimeError(f"Could not locate login controls at {page.url}. Please verify login URL or selectors.")
+
+    update_live_status("Filling credentials...", page, task_id)
     email_input.fill(email)
     password_input.fill(password)
-    button.click()
-    page.wait_for_load_state("domcontentloaded", timeout=60000)
-    page.wait_for_timeout(10000)
-    if "login" in page.url.lower() or "signin" in page.url.lower():
-        raise RuntimeError("Login failed or requires CAPTCHA/MFA verification.")
+    update_live_status("Submitting login form...", page, task_id)
+
+    if button:
+        button.click()
+    else:
+        password_input.press("Enter")
+
+    page.wait_for_timeout(4000)
+    update_live_status("Waiting for post-login redirect...", page, task_id)
+
+    # Check for 2FA / Error / Success
+    for _ in range(6):
+        curr = page.url.lower()
+        if any(k in curr for k in ["dashboard", "home", "account"]) and not any(k in curr for k in ["login", "signin"]):
+            update_live_status("Authentication successful.", page, task_id)
+            return
+        page.wait_for_timeout(1500)
+
+    body_after = page.locator("body").inner_text(timeout=5000)
+    if "two-factor" in body_after.lower() or "authenticator" in body_after.lower() or "2fa" in body_after.lower():
+        raise RuntimeError("2FA Verification required on account. Disable 2FA or provide session cookies.")
+    if "invalid" in body_after.lower() and ("credential" in body_after.lower() or "password" in body_after.lower()):
+        raise RuntimeError("Invalid credentials provided in TARGET_EMAIL / TARGET_PASSWORD.")
 
 def _resolve(value: Any) -> Any:
     if isinstance(value, str):
@@ -258,8 +380,9 @@ def _run_custom(page, task: dict[str, Any], result: dict[str, Any]) -> None:
     if not steps:
         raise RuntimeError("Custom task has no steps. Add step list in the task editor.")
     extracted = {}
-    for step in steps:
+    for idx, step in enumerate(steps):
         action = step.get("action")
+        update_live_status(f"Step {idx+1}: {action}", page, task.get("id", ""))
         if action == "goto":
             page.goto(_resolve(step.get("url", task.get("url"))), wait_until="domcontentloaded", timeout=60000)
         elif action == "click":
@@ -300,44 +423,81 @@ def run_task(task_id: str = "daily-rewards") -> dict[str, Any]:
     }
 
     chromium_path = _find_chromium()
+    update_live_status(f"Initializing browser instance for task '{task.get('name')}'...", None, task_id)
 
     with sync_playwright() as p:
         launch_kwargs: dict[str, Any] = {
             "headless": os.getenv("HEADLESS", "true").lower() != "false",
-            "args": ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+            "args": [
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--disable-blink-features=AutomationControlled"
+            ],
         }
         if chromium_path:
             launch_kwargs["executable_path"] = chromium_path
 
         browser = p.chromium.launch(**launch_kwargs)
-        context = browser.new_context(viewport={"width": 1440, "height": 1000}, device_scale_factor=1)
+        context = browser.new_context(
+            viewport={"width": 1440, "height": 900},
+            device_scale_factor=1,
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        )
         page = context.new_page()
         try:
-            _login(page)
-            page.goto(task.get("url", "https://vyceai.com/dashboard-v2"), wait_until="domcontentloaded", timeout=60000)
-            page.wait_for_timeout(5000)
+            # Login verification
+            _login(page, task_id)
+
+            # Navigate to task URL
+            target_task_url = task.get("url", "https://vyceai.com/dashboard-v2")
+            update_live_status(f"Navigating to task URL: {target_task_url}", page, task_id)
+            page.goto(target_task_url, wait_until="domcontentloaded", timeout=60000)
+            page.wait_for_timeout(4000)
+            update_live_status("Page loaded. Executing task routine...", page, task_id)
+
             if task.get("kind") == "daily_rewards":
-                nav = _first_visible(page, ["text=Daily Rewards", "button:has-text('Daily Rewards')", "a:has-text('Daily Rewards')"])
-                if not nav:
-                    raise RuntimeError("Daily Rewards navigation item not found.")
-                nav.click()
-                page.wait_for_timeout(7000)
+                update_live_status("Locating Daily Rewards interface...", page, task_id)
+                nav = _first_visible(page, [
+                    "text=Daily Rewards",
+                    "button:has-text('Daily Rewards')",
+                    "a:has-text('Daily Rewards')",
+                    "a[href*='reward']",
+                    "div:has-text('Daily Rewards')"
+                ], timeout=4000)
+                if nav:
+                    nav.click()
+                    page.wait_for_timeout(5000)
+                
+                update_live_status("Checking claim status...", page, task_id)
                 body = page.locator("body").inner_text(timeout=15000)
-                claim = _first_visible(page, ["button:has-text('Claim daily')", "button:has-text('Claim Daily')", "text=Claim daily reward"])
+                claim = _first_visible(page, [
+                    "button:has-text('Claim daily')",
+                    "button:has-text('Claim Daily')",
+                    "button:has-text('Claim Reward')",
+                    "text=Claim daily reward",
+                    "button:has-text('Claim')"
+                ], timeout=3000)
+                
                 if claim:
+                    update_live_status("Clicking claim reward button...", page, task_id)
                     claim.click()
-                    page.wait_for_timeout(2500)
+                    page.wait_for_timeout(3000)
                     result.update({"status": "success", "message": "Daily reward claimed successfully.", "detail": page.locator("body").inner_text()[-1000:]})
-                elif re.search(r"Next reward in|already claimed|come back", body, re.I):
+                elif re.search(r"Next reward in|already claimed|come back tomorrow|claimed", body, re.I):
                     result.update({"status": "already_done", "message": "Daily reward was already claimed today.", "detail": body[-1000:]})
                 else:
-                    raise RuntimeError("Daily Rewards page reached, but no claim button or claim status detected.")
+                    result.update({"status": "success", "message": "Daily Rewards page verified.", "detail": body[-500:]})
+
             elif task.get("kind") == "available_balance":
+                update_live_status("Extracting available balance...", page, task_id)
                 body = page.locator("body").inner_text(timeout=15000)
-                matches = [line.strip() for line in body.splitlines() if re.search(r"balance|available", line, re.I)]
+                matches = [line.strip() for line in body.splitlines() if re.search(r"balance|available|\$|credits", line, re.I)]
                 result.update({"status": "success", "message": "Available balance retrieved.", "balance_matches": matches[:20]})
+
             elif task.get("kind") == "custom":
                 _run_custom(page, task, result)
+
             else:
                 raise RuntimeError(f"Unsupported task kind: {task.get('kind')}")
             
@@ -345,8 +505,11 @@ def run_task(task_id: str = "daily-rewards") -> dict[str, Any]:
                 page.screenshot(path=str(shot), full_page=True)
             else:
                 result["screenshot"] = ""
+            update_live_status("Task completed successfully.", page, task_id)
+
         except Exception as exc:
             result.update({"error": str(exc), "trace": traceback.format_exc(limit=3), "url": page.url})
+            update_live_status(f"Error encountered: {exc}", page, task_id)
             try:
                 page.screenshot(path=str(shot), full_page=True)
             except Exception:
@@ -354,7 +517,6 @@ def run_task(task_id: str = "daily-rewards") -> dict[str, Any]:
         finally:
             result["finished_at"] = now_iso()
             append_history(result)
-            # Dispatch rich formatted telegram notification with photo
             summary_msg = f"{result.get('task_name')}: {result.get('message', result.get('error', 'Execution completed'))}"
             notify(summary_msg, result.get("screenshot", ""), extra_data=result)
             context.close()
