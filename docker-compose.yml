@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: orbit-automation
+    ports:
+      - "8000:8000"
+    environment:
+      - AUTOMATION_ENABLED=false
+      - HEADLESS=true
+      - SCHEDULE_TIMEZONE=Asia/Dhaka
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./screenshots:/app/screenshots
+      - ./backups:/app/backups
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Add a scheduler service for cron-like task running
+  scheduler:
+    build: .
+    container_name: orbit-scheduler
+    command: python scheduler.py
+    environment:
+      - AUTOMATION_ENABLED=true
+      - HEADLESS=true
+      - SCHEDULE_TIMEZONE=Asia/Dhaka
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./screenshots:/app/screenshots
+      - ./backups:/app/backups
+      - ./.env:/app/.env:ro
+    depends_on:
+      - app
+    restart: unless-stopped
