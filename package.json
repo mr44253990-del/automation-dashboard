@@ -1,0 +1,19 @@
+{
+  "name": "orbit-automation",
+  "version": "1.0.0",
+  "description": "Orbit Browser Automation Engine",
+  "main": "index.js",
+  "scripts": {
+    "start": "uvicorn app.main:app --host 0.0.0.0 --port 8000",
+    "dev": "uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload",
+    "worker": "python -m app.worker",
+    "scheduler": "python scheduler.py",
+    "install": "pip install -r requirements.txt && playwright install --with-deps chromium"
+  },
+  "keywords": ["automation", "playwright", "browser", "ai"],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

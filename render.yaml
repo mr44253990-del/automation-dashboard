@@ -1,0 +1,27 @@
+# Orbit Automation - Render.com Deployment Config
+# This file is for Render.com deployment (optional)
+
+services:
+  - type: web
+    name: orbit-automation
+    env: python
+    plan: free
+    buildCommand: |
+      pip install -r requirements.txt
+      playwright install --with-deps chromium
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: AUTOMATION_ENABLED
+        value: "false"
+      - key: HEADLESS
+        value: "true"
+      - key: SCHEDULE_TIMEZONE
+        value: "Asia/Dhaka"
+    # Add a persistent disk for data if needed
+    # disks:
+    #   - name: data
+    #     mountPath: /app/data
+    #     sizeGB: 1
